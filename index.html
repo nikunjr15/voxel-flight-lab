@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voxel Flight Lab</title>
+    <meta
+      name="description"
+      content="An interactive museum of fighter jet evolution, with every airframe generated as voxels in code."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <canvas id="stage" aria-hidden="true"></canvas>
+
+    <div class="chrome">
+      <header class="chrome__top">
+        <a class="brand" href="#exhibit">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
+              <path
+                fill="currentColor"
+                d="M12 2.6 13.3 9l7.4 3.1v1.7l-7.4-1.5-.5 4.4 2.6 1.9v1.3L12 19l-3.4.9v-1.3l2.6-1.9-.5-4.4-7.4 1.5v-1.7L10.7 9 12 2.6Z"
+              />
+            </svg>
+          </span>
+          <span class="brand__word">Voxel Flight Lab</span>
+        </a>
+
+        <div class="meta">
+          <p class="meta__line">Airframe collection</p>
+          <p class="meta__line">
+            Exhibit <span data-field="exhibit">004</span> /
+            <span class="meta__country" data-field="country">United States</span>
+          </p>
+        </div>
+      </header>
+
+      <main class="chrome__main" id="exhibit">
+        <p class="eyebrow" data-field="category">Single-engine multirole fighter</p>
+        <h1 class="display">
+          <span data-field="name">F-16 Fighting Falcon</span>
+          <sup class="display__sup" data-field="exhibit">004</sup>
+        </h1>
+        <p class="subtitle">
+          <span data-field="subtitle-a"></span><br />
+          <span data-field="subtitle-b"></span>
+        </p>
+        <div class="colourbar" data-field="colourbar" aria-hidden="true"></div>
+      </main>
+
+      <section class="notes" data-field="annotations" aria-label="Exhibit notes"></section>
+
+      <div class="inspect">
+        <svg class="gizmo" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
+          <g stroke-width="1.4" fill="none" stroke-linecap="round">
+            <path stroke="#c0472b" d="M20 26 L33 31" />
+            <path stroke="#2f6f52" d="M20 26 L20 10" />
+            <path stroke="#36506e" d="M20 26 L7 31" />
+          </g>
+          <circle cx="20" cy="26" r="1.8" fill="#1b1f23" />
+        </svg>
+        <span class="inspect__label">Inspect in 360</span>
+      </div>
+
+      <div class="toolbar" role="group" aria-label="Viewer controls">
+        <button
+          class="chip"
+          type="button"
+          data-toggle="orbit"
+          aria-pressed="false"
+          aria-label="Toggle free orbit"
+        >
+          <span class="chip__dot" aria-hidden="true"></span>Orbit
+        </button>
+      </div>
+
+      <footer class="chrome__foot">
+        <p class="foot__left">
+          <span>Drag</span> rotate <span>Scroll</span> zoom
+        </p>
+        <p class="foot__right">
+          <span class="foot__dot" aria-hidden="true"></span>
+          <span data-field="blocks">0 blocks</span> / flight config A
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

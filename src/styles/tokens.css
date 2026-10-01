@@ -1,0 +1,82 @@
+:root {
+  /* Surface */
+  --bg: #e9eced;
+  --bg-warm: #f1f2f1;
+  --panel: rgba(255, 255, 255, 0.74);
+  --panel-solid: #ffffff;
+
+  /* Ink */
+  --ink: #16191c;
+  --ink-2: #4b5258;
+  --ink-3: #868e95;
+  --ink-4: #a9b0b6;
+
+  /* Line */
+  --line: rgba(22, 25, 28, 0.13);
+  --line-strong: rgba(22, 25, 28, 0.26);
+
+  /* One restrained warm accent, used sparingly */
+  --accent: #ff6a2b;
+  --accent-ink: #c74a14;
+
+  /* Type */
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --t-micro: 0.625rem;
+  --t-mono: 0.6875rem;
+  --t-body: 0.8125rem;
+  --t-sub: 0.9375rem;
+
+  --ls-wide: 0.18em;
+  --ls-mono: 0.13em;
+
+  /* Rhythm */
+  --pad: clamp(18px, 2.3vw, 34px);
+  --gap: clamp(12px, 1.4vw, 22px);
+  --radius: 14px;
+
+  /* Motion: everything eases, nothing snaps */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 220ms;
+  --dur: 420ms;
+  --dur-slow: 820ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
