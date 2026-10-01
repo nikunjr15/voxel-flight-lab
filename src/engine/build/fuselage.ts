@@ -15,6 +15,7 @@ export function buildFuselage(ctx: BuildCtx, p: FuselageParams): void {
   const yT = new Track(p.stations.map((s) => ({ t: s.t, v: s.y ?? 0 })));
   const eT = new Track(p.stations.map((s) => ({ t: s.t, v: s.e ?? 2 })));
 
+  const triT = new Track(p.stations.map((s) => ({ t: s.t, v: s.tri ?? 0 })));
   const radomeTo = p.radomeTo ?? 0.07;
   const noseTo = p.noseTo ?? 0.3;
 
@@ -29,7 +30,14 @@ export function buildFuselage(ctx: BuildCtx, p: FuselageParams): void {
     const w = ctx.v(Math.max(wT.at(t), 0));
     const h = ctx.v(Math.max(hT.at(t), 0));
     if (w < 0.4 || h < 0.4) return null;
-    return { cx: ctx.gx(0), cy: ctx.gy(yT.at(t)), w, h, e: clamp(eT.at(t), 1.6, 6) };
+    return {
+      cx: ctx.gx(0),
+      cy: ctx.gy(yT.at(t)),
+      w,
+      h,
+      e: clamp(eT.at(t), 1.6, 6),
+      tri: clamp(triT.at(t), -1, 1),
+    };
   };
 
   fillLoftZ(ctx.grid, ctx.gzAft(p.length), ctx.gzAft(p.length * noseTo), sample, {

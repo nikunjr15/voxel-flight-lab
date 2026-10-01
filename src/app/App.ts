@@ -6,6 +6,7 @@ import { BackdropClouds } from '../engine/renderer/BackdropClouds';
 import { buildClient } from '../engine/build/client';
 import { VoxelModel } from '../engine/voxel/VoxelModel';
 import { Rig } from '../scenes/rig/Rig';
+import { Gallery, GALLERY_SETS } from '../scenes/rig/Gallery';
 import { PARTS } from '../engine/voxel/parts';
 import { CameraRig, CameraPreset } from '../scenes/CameraRig';
 import { AIRCRAFT } from '../aircraft';
@@ -16,6 +17,11 @@ import { DevStats } from '../ui/devstats';
 /** `?rig=1` swaps the exhibit for the primitive test bench. Dev only. */
 const RIG_MODE =
   import.meta.env.DEV && new URLSearchParams(location.search).get('rig') === '1';
+
+/** `?gallery=2b` lays a batch out at true relative scale. Dev only. */
+const GALLERY_SET = import.meta.env.DEV
+  ? new URLSearchParams(location.search).get('gallery')
+  : null;
 
 type ViewName = 'hero' | 'plan' | 'side' | 'port' | 'rear' | 'front' | 'rear34' | 'under';
 
@@ -60,6 +66,7 @@ export class App {
 
   private model: VoxelModel | null = null;
   private bench: Rig | null = null;
+  private gallery: Gallery | null = null;
   private shadow: Mesh | null = null;
   private config: AircraftConfig;
   private reduced = prefersReducedMotion();
@@ -85,8 +92,46 @@ export class App {
     this.rig.set(this.heroPreset());
     this.bindEvents();
 
-    if (RIG_MODE) void this.loadRig();
+    if (GALLERY_SET) void this.loadGallery(GALLERY_SET);
+    else if (RIG_MODE) void this.loadRig();
     else void this.load(this.config).then(() => this.rig.apply(this.heroPreset(), 0.9));
+  }
+
+  /**
+   * Dev review view. `?gallery=2b` lays a batch out at true relative scale so
+   * proportions across a whole era can be judged in one screenshot.
+   */
+  private async loadGallery(set: string): Promise<void> {
+    const params = new URLSearchParams(location.search);
+    const ids = GALLERY_SETS[set] ?? GALLERY_SETS['2b'];
+    const gallery = new Gallery(document.body);
+    this.gallery = gallery;
+    this.pivot.add(gallery.group);
+    this.idle = false;
+    this.pivot.rotation.set(0, 0, 0);
+    document.querySelector('.chrome')?.setAttribute('hidden', '');
+
+    await gallery.load(ids, Number(params.get('density')) || 1);
+    console.info(`[gallery ${set}]\n${gallery.table()}`);
+
+    const view = (params.get('view') ?? 'plan') as ViewName;
+    const b = gallery.bounds();
+    const size = b.getSize(new Vector3());
+    const centre = b.getCenter(new Vector3());
+    const dir = new Vector3(...(VIEW_DIRS[view] ?? VIEW_DIRS.plan)).normalize();
+    const fov = 34;
+    const vFov = (fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (this.stage.camera.aspect || 1));
+    // Fit the row by its width and depth separately: a plan view of a long row
+    // is limited by horizontal field of view, a side view by vertical.
+    const dist =
+      Math.max(size.x / (2 * Math.tan(hFov / 2)), size.z / (2 * Math.tan(vFov / 2))) * 1.18;
+    const p = dir.multiplyScalar(dist).add(centre);
+    this.rig.set({
+      position: [p.x, p.y, p.z],
+      target: [centre.x, centre.y, centre.z],
+      fov,
+    });
   }
 
   /**
@@ -353,10 +398,11 @@ export class App {
     this.rig.update(dt);
     this.stage.render(t);
 
-    if (this.bench) {
+    const overlay = this.bench ?? this.gallery;
+    if (overlay) {
       const cam = this.stage.camera;
       const { width, height } = this.stage.size;
-      this.bench.updateLabels((p) => {
+      overlay.updateLabels((p) => {
         const v = p.clone().project(cam);
         return {
           x: (v.x * 0.5 + 0.5) * width,
@@ -377,6 +423,7 @@ export class App {
     window.removeEventListener('keydown', this.onKeyDown);
     this.model?.dispose();
     this.bench?.dispose();
+    this.gallery?.dispose();
     this.clouds.dispose();
     this.lighting.dispose();
     this.rig.dispose();

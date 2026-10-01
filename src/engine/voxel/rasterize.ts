@@ -99,6 +99,12 @@ export interface LoftSample {
   h: number;
   /** 2 = ellipse, 3 to 5 = progressively boxier. */
   e?: number;
+  /**
+   * Triangular taper in -1..1. Positive narrows the section toward its
+   * bottom, negative toward its top. Applied as a width scale per row, so it
+   * composes with the superellipse exponent rather than replacing it.
+   */
+  tri?: number;
 }
 
 export interface LoftOptions extends FillOptions {
@@ -133,12 +139,20 @@ export function fillLoftZ(
     const x1 = Math.min(grid.sx - 1, Math.ceil(s.cx + w));
     const y0 = Math.max(0, Math.floor(Math.max(s.cy - h, clipMin)));
     const y1 = Math.min(grid.sy - 1, Math.ceil(Math.min(s.cy + h, clipMax)));
+    const tri = s.tri ?? 0;
     for (let y = y0; y <= y1; y++) {
       const ny = Math.abs((y - s.cy) / h);
       const py = e === 2 ? ny * ny : Math.pow(ny, e);
       if (py > 1) continue;
+      let wRow = w;
+      if (tri !== 0) {
+        // Height fraction, 0 at the bottom of the section and 1 at the top.
+        const ty = (y - (s.cy - h)) / (2 * h);
+        wRow = w * (tri > 0 ? 1 - tri * (1 - ty) : 1 + tri * ty);
+        if (wRow < 0.5) continue;
+      }
       for (let x = x0; x <= x1; x++) {
-        const nx = Math.abs((x - s.cx) / w);
+        const nx = Math.abs((x - s.cx) / wRow);
         const px = e === 2 ? nx * nx : Math.pow(nx, e);
         const r = px + py;
         if (r > 1) continue;
@@ -164,11 +178,23 @@ export interface Planform {
   kink?: { at: number; chord: number; sweep: number };
   /** Rounds the tip instead of cutting it square. */
   roundTip?: boolean;
+  /**
+   * Fills only the span band [spanFrom, spanTo], while taper and sweep stay
+   * measured from the true root. Lets a surface be built in pieces -- an
+   * inner panel and an outer one at a different dihedral -- without the
+   * planform breaking at the joint.
+   */
+  spanFrom?: number;
+  spanTo?: number;
 }
 
-interface Station {
+export interface Station {
   le: number;
   chord: number;
+}
+
+export function planformStation(p: Planform, s: number): Station {
+  return stationAt(p, s);
 }
 
 function stationAt(p: Planform, s: number): Station {
@@ -187,23 +213,31 @@ function stationAt(p: Planform, s: number): Station {
 export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: FillOptions): void {
   const inset = p.rootInset ?? 0;
   const tipRatio = p.tipThicknessRatio ?? 0.6;
+  const from = p.spanFrom ?? 0;
+  const to = Math.min(p.span, p.spanTo ?? p.span);
+  // The frame origin sits at `from`, so leading edges are measured from there.
+  const leBase = stationAt(p, from).le;
+  const localSpan = Math.max(0, to - from);
+
   let zMin = Infinity;
   let zMax = -Infinity;
   for (let i = 0; i <= 24; i++) {
-    const st = stationAt(p, (p.span * i) / 24);
-    if (st.le < zMin) zMin = st.le;
-    if (st.le + st.chord > zMax) zMax = st.le + st.chord;
+    const st = stationAt(p, from + (localSpan * i) / 24);
+    const le = st.le - leBase;
+    if (le < zMin) zMin = le;
+    if (le + st.chord > zMax) zMax = le + st.chord;
   }
   const halfT = Math.max(p.thickness, 1.2) * 0.5 + 1;
 
   const inside: InsideFn = (lx, ly, lz) => {
-    if (lx < inset) return false;
-    const st = stationAt(p, lx);
+    const s = from + lx;
+    if (s < inset || s > to) return false;
+    const st = stationAt(p, s);
     let chord = st.chord;
-    let le = st.le;
+    let le = st.le - leBase;
     if (p.roundTip) {
       const radius = chord * 0.45;
-      const over = lx - (p.span - radius);
+      const over = s - (p.span - radius);
       if (over > 0) {
         const k = Math.sqrt(Math.max(0, 1 - (over / radius) * (over / radius)));
         const shrink = radius * (1 - k);
@@ -215,13 +249,13 @@ export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: F
     if (lz < le || lz > le + chord) return false;
     const c = (lz - le) / chord;
     const th = Math.max(
-      p.thickness * thicknessProfile(c) * lerp(1, tipRatio, lx / Math.max(1e-6, p.span)),
+      p.thickness * thicknessProfile(c) * lerp(1, tipRatio, s / Math.max(1e-6, p.span)),
       1.0,
     );
     return Math.abs(ly) <= th * 0.5;
   };
 
-  fillFrame(grid, frame, [0, -halfT, zMin - 1], [p.span, halfT, zMax + 1], inside, opts);
+  fillFrame(grid, frame, [0, -halfT, zMin - 1], [localSpan, halfT, zMax + 1], inside, opts);
 }
 
 export function fillBox(grid: VoxelGrid, min: V3, max: V3, opts: FillOptions): void {

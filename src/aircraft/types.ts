@@ -57,6 +57,11 @@ export interface FuselageStation {
   y?: number;
   /** Superellipse exponent: 2 is a pure ellipse, 4 is near-rectangular. */
   e?: number;
+  /**
+   * Taper toward a triangular section. Positive narrows the bottom (apex
+   * down, as on the Me 262); negative narrows the top. 0 is symmetric.
+   */
+  tri?: number;
 }
 
 export interface FuselageParams {
@@ -100,9 +105,21 @@ export interface SurfaceParams {
   /** Lateral offset of a fin pair from the centreline. */
   separation?: number;
   kink?: { at: number; chord: number; sweep: number };
+  /**
+   * Dihedral break part way out. The inner panel keeps `dihedral`; from `at`
+   * (fraction of exposed half-span) outboard the panel tilts to `angle`.
+   * Covers the F-4 pattern of flat inner wing with raised outer panels.
+   */
+  outerDihedral?: { at: number; angle: number };
   roundTip?: boolean;
   tipThicknessRatio?: number;
   palette?: PaletteSlot;
+  /**
+   * Where a horizontal surface attaches. `fin-top` is a T-tail, `fin-mid`
+   * the part-way mounting used on the MiG-15. Both read their height from
+   * the vertical tail, so the config does not have to restate it.
+   */
+  mount?: 'body' | 'fin-mid' | 'fin-top';
   /**
    * Present only on `variable-geometry` wings. The glove is the fixed inner
    * section; the outer panel pivots at `pivotX` between `sweepMin` and
@@ -179,6 +196,25 @@ export interface IntakeParams {
   shockCone?: { length: number; radius: number };
   /** Splitter plate standing the lip off the fuselage, for side intakes. */
   splitter?: number;
+}
+
+/**
+ * A podded engine slung under a wing or on a pylon: intake lip at the front,
+ * exhaust at the back. Used for the Me 262, and later for concept nacelles
+ * and loyal-wingman drones.
+ */
+export interface NacelleParams {
+  /** Centre: x from the centreline, y above the waterline, z aft of the nose. */
+  at: [number, number, number];
+  length: number;
+  radius: number;
+  mirror?: boolean;
+  /** Pylon up to the wing above. 0 for a nacelle faired straight on. */
+  pylon?: number;
+  /** Exhaust nozzle radius; defaults to a little under the body. */
+  exhaustRadius?: number;
+  /** Nose droop, metres, for a nacelle that is not parallel to the datum. */
+  incidence?: number;
 }
 
 export type NozzleKind = 'round' | 'twin-round' | 'vectoring-2d' | 'serrated';
@@ -288,7 +324,9 @@ export interface AircraftGeometry {
   tailVee?: SurfaceParams;
   ventral?: SurfaceParams;
   intakes: IntakeParams[];
-  nozzle: NozzleParams;
+  nacelles?: NacelleParams[];
+  /** Absent on aircraft whose thrust is entirely in podded nacelles. */
+  nozzle?: NozzleParams;
   canopy: CanopyParams;
   bays?: BayParams[];
   stores?: StoreParams[];

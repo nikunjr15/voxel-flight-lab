@@ -76,6 +76,29 @@ function buildOne(
     );
   }
 
+  if (p.kind === 'side-half-cone' && p.shockCone) {
+    // Half-cone shock body standing in the inboard corner of the lip, as on
+    // the F-104 and the Mirage III. Only the outboard half is drawn, which is
+    // what makes it read as a half cone rather than a spike.
+    const len = ctx.v(p.shockCone.length);
+    const rc = ctx.v(p.shockCone.radius);
+    const inboard = Math.sign(lipX || side) * -1;
+    const coneX = cx + inboard * hw * 0.55;
+    const zTip = zLip + len * 0.55;
+    fillLoftZ(
+      grid,
+      zTip - len,
+      zTip,
+      (z) => {
+        const t = clamp((zTip - z) / Math.max(1e-6, len), 0, 1);
+        const rr = rc * Math.pow(t, 0.7);
+        if (rr < 0.5) return null;
+        return { cx: coneX, cy, w: rr, h: rr, e: 2 };
+      },
+      { pal: ctx.pal.shade('skinDark', 0.8), part: ctx.p(part) },
+    );
+  }
+
   if (p.kind === 'dsi') {
     // Diverterless bump: a shallow blister just ahead of the lip, which is what
     // replaces the splitter plate on a stealth inlet.

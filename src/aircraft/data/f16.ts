@@ -8,7 +8,7 @@ export const F16: AircraftConfig = {
   id: 'f-16',
   name: 'F-16 Fighting Falcon',
   designation: 'F-16',
-  exhibitNo: '004',
+  exhibitNo: '011',
   chapter: 4,
   spec: {
     firstFlight: 1974,

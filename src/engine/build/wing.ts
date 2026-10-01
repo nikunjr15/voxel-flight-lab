@@ -1,5 +1,5 @@
 import { clamp, DEG, V3 } from '../util/math';
-import { fillLoftZ, fillPlanform, makeFrame, Planform } from '../voxel/rasterize';
+import { fillLoftZ, fillPlanform, makeFrame, Planform, planformStation } from '../voxel/rasterize';
 import type { PartId } from '../voxel/parts';
 import type { LerxParams, SurfaceParams } from '../../aircraft/types';
 import type { BuildCtx } from './ctx';
@@ -44,15 +44,44 @@ export function buildSurfacePair(
   const y = ctx.gy(p.atY);
 
   for (const side of [1, -1] as const) {
-    const frame = makeFrame(
-      [ctx.gx(rootOffset * side), y, z],
+    const part = ctx.p(side > 0 ? partR : partL);
+    const rootPos: V3 = [ctx.gx(rootOffset * side), y, z];
+
+    if (!p.outerDihedral) {
+      const frame = makeFrame(
+        rootPos,
+        [side * Math.cos(dihedral), Math.sin(dihedral), 0],
+        CHORD_AFT,
+      );
+      fillPlanform(ctx.grid, frame, plan, { pal, part });
+      continue;
+    }
+
+    // Cranked dihedral: inner panel at `dihedral`, outer panel at `angle`,
+    // joined at the break. Both halves read their taper from the true root,
+    // so the leading edge stays continuous across the joint.
+    const breakAt = plan.span * clamp(p.outerDihedral.at, 0.05, 0.95);
+    const outer = p.outerDihedral.angle * DEG;
+
+    const innerFrame = makeFrame(
+      rootPos,
       [side * Math.cos(dihedral), Math.sin(dihedral), 0],
       CHORD_AFT,
     );
-    fillPlanform(ctx.grid, frame, plan, {
-      pal,
-      part: ctx.p(side > 0 ? partR : partL),
-    });
+    fillPlanform(ctx.grid, innerFrame, { ...plan, spanTo: breakAt }, { pal, part });
+
+    const leBreak = planformStation(plan, breakAt).le;
+    const breakPos: V3 = [
+      rootPos[0] + side * Math.cos(dihedral) * breakAt,
+      rootPos[1] + Math.sin(dihedral) * breakAt,
+      rootPos[2] - leBreak,
+    ];
+    const outerFrame = makeFrame(
+      breakPos,
+      [side * Math.cos(outer), Math.sin(outer), 0],
+      CHORD_AFT,
+    );
+    fillPlanform(ctx.grid, outerFrame, { ...plan, spanFrom: breakAt }, { pal, part });
   }
 }
 

@@ -267,7 +267,7 @@ export const SPECIMENS: RigSpecimen[] = [
           sDuct: { toY: 0.22, toX: 0 },
         },
       ];
-      g.nozzle = { ...g.nozzle, engineFromZ: 8.4 };
+      g.nozzle = { ...g.nozzle!, engineFromZ: 8.4 };
     },
     {
       reveal: ['fuselage', 'nose', 'wing-l', 'wing-r', 'tail-v', 'tail-h-l', 'tail-h-r'],
@@ -276,11 +276,11 @@ export const SPECIMENS: RigSpecimen[] = [
     },
   ),
   specimen('serrated', 'Serrated nozzle', 'Eight chevrons cut per azimuth, not banded', (g) => {
-    g.nozzle = { ...g.nozzle, kind: 'serrated', radius: 0.58, length: 1.6, serrations: 8 };
+    g.nozzle = { ...g.nozzle!, kind: 'serrated', radius: 0.58, length: 1.6, serrations: 8 };
   }),
   specimen('vector-2d', '2D vectoring nozzle', 'Flat petals deflected 15 degrees', (g) => {
     g.nozzle = {
-      ...g.nozzle,
+      ...g.nozzle!,
       kind: 'vectoring-2d',
       radius: 0.56,
       length: 1.7,
@@ -358,6 +358,88 @@ export const SPECIMENS: RigSpecimen[] = [
       },
       { kind: 'rail', at: [3.8, 0.0, 6.0], length: 1.6, radius: 0.1, mirror: true },
     ];
+  }),
+  specimen('nacelle', 'Underwing nacelles', 'Podded engines: lip, bored duct, exhaust', (g) => {
+    g.wing = { ...g.wing, sweep: 20, rootChord: 2.9, tipChord: 1.2, span: 8.6, atZ: 4.6 };
+    g.nacelles = [
+      {
+        at: [1.9, -0.52, 5.4],
+        length: 3.4,
+        radius: 0.42,
+        mirror: true,
+        pylon: 0.2,
+        exhaustRadius: 0.3,
+      },
+    ];
+    g.nozzle = { ...g.nozzle!, kind: 'round', radius: 0.3, engineFromZ: undefined };
+  }),
+  specimen('t-tail', 'T-tail', 'Stabiliser carried on top of the fin', (g) => {
+    g.tailV = {
+      span: 2.3,
+      rootChord: 2.8,
+      tipChord: 1.3,
+      sweep: 40,
+      thickness: 0.22,
+      atZ: 8.0,
+      atY: 0.45,
+    };
+    g.tailH = {
+      span: 3.6,
+      rootOffset: 0.18,
+      rootChord: 1.5,
+      tipChord: 0.7,
+      sweep: 22,
+      thickness: 0.13,
+      atZ: 9.4,
+      atY: 0,
+      mount: 'fin-top',
+    };
+  }),
+  specimen('anhedral', 'Strong anhedral', 'Straight wing drooped ten degrees', (g) => {
+    g.wing = {
+      ...g.wing,
+      span: 6.6,
+      rootChord: 2.6,
+      tipChord: 1.0,
+      sweep: 8,
+      dihedral: -10,
+      thickness: 0.16,
+    };
+  }),
+  specimen('cranked', 'Cranked dihedral', 'Flat inner panel, outer panel up twelve degrees', (g) => {
+    g.wing = {
+      ...g.wing,
+      span: 8.4,
+      rootChord: 3.6,
+      tipChord: 1.1,
+      sweep: 42,
+      dihedral: 0,
+      outerDihedral: { at: 0.55, angle: 12 },
+    };
+    g.tailH = { ...g.tailH!, dihedral: -20 };
+  }),
+  specimen('half-cone', 'Half-cone side intakes', 'Shock body in the inboard corner of each lip', (g) => {
+    g.intakes = [
+      {
+        kind: 'side-half-cone',
+        atZ: 4.0,
+        length: 2.1,
+        halfWidth: 0.42,
+        height: 0.72,
+        atY: -0.2,
+        offsetX: 0.9,
+        duct: true,
+        splitter: 0.12,
+        shockCone: { length: 1.4, radius: 0.3 },
+      },
+    ];
+  }),
+  specimen('tri-section', 'Triangular fuselage', 'Section tapered to an apex at the keel', (g) => {
+    g.fuselage.stations = g.fuselage.stations.map((st) => ({
+      ...st,
+      tri: st.t < 0.1 ? 0 : 0.72,
+      e: 2.6,
+    }));
   }),
   specimen('glyphs', 'Voxel glyph font', 'Serial painted with the in-code 3x5 font', (g) => {
     g.lettering = [
