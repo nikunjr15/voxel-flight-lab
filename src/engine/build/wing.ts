@@ -1,4 +1,4 @@
-import { DEG, V3 } from '../util/math';
+import { clamp, DEG, V3 } from '../util/math';
 import { fillLoftZ, fillPlanform, makeFrame, Planform } from '../voxel/rasterize';
 import type { PartId } from '../voxel/parts';
 import type { LerxParams, SurfaceParams } from '../../aircraft/types';
@@ -80,6 +80,85 @@ export function buildFin(
     pal: ctx.slot(p.palette),
     part: ctx.p(part),
   });
+}
+
+/**
+ * Variable-geometry wing: a fixed glove plus an outer panel that pivots.
+ *
+ * The panel is expressed as an ordinary planform rather than a rotated frame,
+ * because `makeFrame` orthonormalises the span axis against the chord axis and
+ * would cancel the sweep. Sweeping a panel back shortens its lateral span by
+ * cos(theta) and lengthens its streamwise chord by 1/cos(theta), which is what
+ * the two scale factors below reproduce.
+ */
+export function buildVariableWing(
+  ctx: BuildCtx,
+  p: SurfaceParams,
+  partR: PartId,
+  partL: PartId,
+  sweepDeg?: number,
+): void {
+  const vg = p.vg;
+  if (!vg) {
+    buildSurfacePair(ctx, p, partR, partL);
+    return;
+  }
+  const rootOffset = p.rootOffset ?? 0;
+  const dihedral = (p.dihedral ?? 0) * DEG;
+  const pal = ctx.slot(p.palette);
+  const z = ctx.gzAft(p.atZ);
+  const y = ctx.gy(p.atY);
+  const theta = clamp(sweepDeg ?? vg.sweepMin, vg.sweepMin, vg.sweepMax) * DEG;
+  const cosT = Math.max(0.2, Math.cos(theta));
+
+  for (const side of [1, -1] as const) {
+    const part = ctx.p(side > 0 ? partR : partL);
+
+    // Fixed glove, from the fuselage side out to the pivot.
+    const gloveSpan = vg.pivotX - rootOffset;
+    if (gloveSpan > 0) {
+      const gloveFrame = makeFrame(
+        [ctx.gx(rootOffset * side), y, z],
+        [side * Math.cos(dihedral), Math.sin(dihedral), 0],
+        CHORD_AFT,
+      );
+      fillPlanform(
+        ctx.grid,
+        gloveFrame,
+        {
+          span: ctx.v(gloveSpan),
+          rootChord: ctx.v(vg.gloveChord),
+          tipChord: ctx.v(vg.gloveChord * 0.92),
+          sweep: vg.gloveSweep * DEG,
+          thickness: ctx.v(p.thickness * 1.25),
+          tipThicknessRatio: 0.85,
+        },
+        { pal, part },
+      );
+    }
+
+    // Movable panel, hinged at the pivot.
+    const pivotLE = Math.tan(vg.gloveSweep * DEG) * ctx.v(gloveSpan) * 0.35;
+    const panelFrame = makeFrame(
+      [ctx.gx(vg.pivotX * side), y, z - pivotLE],
+      [side * Math.cos(dihedral), Math.sin(dihedral), 0],
+      CHORD_AFT,
+    );
+    fillPlanform(
+      ctx.grid,
+      panelFrame,
+      {
+        span: ctx.v(vg.panelSpan) * cosT,
+        rootChord: ctx.v(vg.panelRootChord) / cosT,
+        tipChord: ctx.v(vg.panelTipChord) / cosT,
+        sweep: theta,
+        thickness: ctx.v(p.thickness),
+        tipThicknessRatio: p.tipThicknessRatio ?? 0.6,
+        roundTip: p.roundTip,
+      },
+      { pal, part },
+    );
+  }
 }
 
 /**

@@ -63,6 +63,7 @@ function makeEnvSource(): DataTexture {
 export interface LightingHandles {
   key: DirectionalLight;
   fill: DirectionalLight;
+  bounce: DirectionalLight;
   ambient: HemisphereLight;
   environment: Texture;
   dispose(): void;
@@ -80,6 +81,13 @@ export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHa
   fill.position.set(8, 4, -9);
   scene.add(fill);
 
+  // Soft bounce from below. Without it the belly, the intakes and an open
+  // weapons bay fall into solid black and the modes that show them read as
+  // empty silhouettes.
+  const bounce = new DirectionalLight(0xdfe7ee, 0.42);
+  bounce.position.set(-3, -8, 4);
+  scene.add(bounce);
+
   const source = makeEnvSource();
   const pmrem = new PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
@@ -92,11 +100,12 @@ export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHa
   return {
     key,
     fill,
+    bounce,
     ambient,
     environment,
     dispose() {
       environment.dispose();
-      scene.remove(ambient, key, fill);
+      scene.remove(ambient, key, fill, bounce);
     },
   };
 }

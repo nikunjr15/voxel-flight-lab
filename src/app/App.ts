@@ -3,14 +3,33 @@ import { Stage } from '../engine/renderer/Renderer';
 import { setupLighting, LightingHandles } from '../engine/renderer/Lighting';
 import { createContactShadow } from '../engine/renderer/ContactShadow';
 import { BackdropClouds } from '../engine/renderer/BackdropClouds';
-import { assemble } from '../engine/build/assemble';
+import { buildClient } from '../engine/build/client';
 import { VoxelModel } from '../engine/voxel/VoxelModel';
+import { Rig } from '../scenes/rig/Rig';
 import { PARTS } from '../engine/voxel/parts';
 import { CameraRig, CameraPreset } from '../scenes/CameraRig';
 import { AIRCRAFT } from '../aircraft';
 import type { AircraftConfig } from '../aircraft/types';
 import { COUNTRIES } from '../aircraft/countries';
 import { DevStats } from '../ui/devstats';
+
+/** `?rig=1` swaps the exhibit for the primitive test bench. Dev only. */
+const RIG_MODE =
+  import.meta.env.DEV && new URLSearchParams(location.search).get('rig') === '1';
+
+type ViewName = 'hero' | 'plan' | 'side' | 'port' | 'rear' | 'front' | 'rear34' | 'under';
+
+/** Fixed inspection directions, so a screenshot is reproducible. */
+const VIEW_DIRS: Record<ViewName, [number, number, number]> = {
+  hero: [0.52, 0.3, 1],
+  plan: [0, 1, 0.0001],
+  side: [1, 0.06, 0],
+  port: [-1, 0.06, 0],
+  front: [0.12, 0.1, 1],
+  rear: [0.1, 0.08, -1],
+  rear34: [0.65, 0.4, -1],
+  under: [0.15, -1, 0.25],
+};
 
 /** Direction the hero shot looks from: three-quarter, slightly above. */
 const HERO_DIR = new Vector3(0.52, 0.3, 1).normalize();
@@ -40,6 +59,7 @@ export class App {
   private readonly stats = new DevStats();
 
   private model: VoxelModel | null = null;
+  private bench: Rig | null = null;
   private shadow: Mesh | null = null;
   private config: AircraftConfig;
   private reduced = prefersReducedMotion();
@@ -62,10 +82,73 @@ export class App {
 
     this.config = AIRCRAFT[0];
     this.resize();
-    this.load(this.config);
     this.rig.set(this.heroPreset());
-
     this.bindEvents();
+
+    if (RIG_MODE) void this.loadRig();
+    else void this.load(this.config).then(() => this.rig.apply(this.heroPreset(), 0.9));
+  }
+
+  /**
+   * Dev bench. `?rig=1` lays every primitive out on plinths; adding
+   * `&only=N&view=side` isolates one and frames it from a fixed direction,
+   * which is the only way to judge a nozzle or a duct without camera fiddling.
+   */
+  private async loadRig(): Promise<void> {
+    const params = new URLSearchParams(location.search);
+    const bench = new Rig(document.body);
+    this.bench = bench;
+    this.pivot.add(bench.group);
+    this.idle = false;
+    this.pivot.rotation.set(0, 0, 0);
+    document.querySelector('.chrome')?.setAttribute('hidden', '');
+
+    const only = params.get('only');
+    if (only !== null) {
+      await bench.loadOne(Number(only));
+      const view = (params.get('view') ?? 'hero') as ViewName;
+      const zoom = Number(params.get('zoom')) || 1;
+      const at = (params.get('at') ?? '').split(',').map(Number);
+      const model = bench.placed[0]?.model;
+      if (model) {
+        const preset = this.fitPreset(model.size, view, 30, zoom);
+        if (at.length === 3 && at.every((n) => Number.isFinite(n))) {
+          // Look at a named point on the airframe rather than its centre, for
+          // close inspection of a nose, a nozzle or a bay.
+          preset.position = [
+            preset.position[0] + at[0],
+            preset.position[1] + at[1],
+            preset.position[2] + at[2],
+          ];
+          preset.target = [at[0], at[1], at[2]];
+        }
+        this.rig.set(preset);
+      }
+      return;
+    }
+
+    await bench.load();
+    const b = bench.bounds();
+    const size = b.getSize(new Vector3());
+    const centre = b.getCenter(new Vector3());
+    const dist = Math.max(size.x, size.z * 1.4) * 1.45;
+    this.rig.set({
+      position: [centre.x, centre.y + dist * 0.72, centre.z + dist * 0.92],
+      target: [centre.x, centre.y - 1, centre.z],
+      fov: 42,
+    });
+  }
+
+  /** Frames a model of the given size from a named direction, origin-centred. */
+  private fitPreset(size: Vector3, view: ViewName, fov = 30, zoom = 1): CameraPreset {
+    const dir = VIEW_DIRS[view] ?? VIEW_DIRS.hero;
+    const radius = Math.max(size.x, size.y, size.z) * 0.5;
+    const aspect = this.stage.camera.aspect || 1;
+    const vFov = (fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const dist = ((radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.12) / Math.max(0.05, zoom);
+    const p = new Vector3(...dir).normalize().multiplyScalar(dist);
+    return { position: [p.x, p.y, p.z], target: [0, 0, 0], fov };
   }
 
   /**
@@ -125,6 +208,7 @@ export class App {
   }
 
   private reframeTimer = 0;
+  private loadToken = 0;
 
   private readonly resize = (): void => {
     this.stage.resize(window.innerWidth, window.innerHeight);
@@ -132,7 +216,8 @@ export class App {
     // the camera on every frame.
     window.clearTimeout(this.reframeTimer);
     this.reframeTimer = window.setTimeout(() => {
-      if (!this.rig.orbitEnabled) this.rig.apply(this.heroPreset(), 0.6);
+      if (RIG_MODE || this.rig.orbitEnabled) return;
+      this.rig.apply(this.heroPreset(), 0.6);
     }, 160);
   };
 
@@ -151,13 +236,21 @@ export class App {
     }
   };
 
-  /** Builds a config into instance buffers and swaps it onto the turntable. */
-  load(config: AircraftConfig): void {
+  /**
+   * Builds a config into instance buffers and swaps it onto the turntable.
+   * The build runs in a worker, so a later call can land first; the token
+   * check throws away anything the user has already navigated past.
+   */
+  async load(config: AircraftConfig): Promise<void> {
+    const token = ++this.loadToken;
     this.config = config;
+
+    const data = await buildClient.build(config, { density: densityForViewport() });
+    if (token !== this.loadToken) return;
+
     this.model?.dispose();
     this.pivot.clear();
 
-    const data = assemble(config, { density: densityForViewport() });
     const model = new VoxelModel(config.id, data);
     model.setAccent(config.palette.accent ?? '#ff6a2b');
 
@@ -259,6 +352,20 @@ export class App {
 
     this.rig.update(dt);
     this.stage.render(t);
+
+    if (this.bench) {
+      const cam = this.stage.camera;
+      const { width, height } = this.stage.size;
+      this.bench.updateLabels((p) => {
+        const v = p.clone().project(cam);
+        return {
+          x: (v.x * 0.5 + 0.5) * width,
+          y: (-v.y * 0.5 + 0.5) * height,
+          visible: v.z < 1,
+        };
+      });
+    }
+
     this.stats.tick(now);
     requestAnimationFrame(this.frame);
   };
@@ -269,6 +376,7 @@ export class App {
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('keydown', this.onKeyDown);
     this.model?.dispose();
+    this.bench?.dispose();
     this.clouds.dispose();
     this.lighting.dispose();
     this.rig.dispose();
@@ -286,7 +394,9 @@ export class App {
     rig: CameraRig;
     pivot: Group;
     model: VoxelModel | null;
+    bench: Rig | null;
     look(preset: CameraPreset): void;
+    focus(i: number, dist?: number): void;
     setIdle(v: boolean): void;
   } {
     return {
@@ -294,7 +404,18 @@ export class App {
       rig: this.rig,
       pivot: this.pivot,
       model: this.model,
+      bench: this.bench,
       look: (preset) => this.rig.set(preset),
+      focus: (i: number, dist = 9) => {
+        const p = this.bench?.placed[i];
+        if (!p) return;
+        const c = p.centre;
+        this.rig.set({
+          position: [c.x + dist * 0.55, c.y + dist * 0.42, c.z + dist * 0.85],
+          target: [c.x, c.y - 0.3, c.z],
+          fov: 34,
+        });
+      },
       setIdle: (v) => {
         this.idle = v;
         if (!v) this.pivot.rotation.set(0, 0, 0);

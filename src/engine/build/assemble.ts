@@ -7,24 +7,35 @@ import { COUNTRIES } from '../../aircraft/countries';
 import type { AircraftConfig } from '../../aircraft/types';
 import { BuildCtx } from './ctx';
 import { buildFuselage } from './fuselage';
-import { buildFin, buildLerx, buildSurfacePair } from './wing';
+import { buildFin, buildLerx, buildSurfacePair, buildVariableWing } from './wing';
 import { buildCanopy } from './canopy';
-import { buildIntake } from './intake';
+import { buildIntake, DuctPath } from './intake';
 import { buildEngine, buildNozzle } from './nozzle';
+import { buildBays, buildStores } from './stores';
 import { buildBlocks } from './blocks';
 import { buildMarkings } from './markings';
+import { buildLettering } from './glyphs';
 
 export interface AssembleOptions {
   /** 1.0 desktop, 0.65 mobile, 0.5 low power. */
   density?: number;
   /** Voxels nose to tail at density 1.0. */
   targetLengthVoxels?: number;
+  /** Overrides the wing sweep on variable-geometry aircraft, in degrees. */
+  wingSweep?: number;
+  /** Overrides bay door opening, 0 closed to 1 open. */
+  doorOpen?: number;
 }
 
 export interface AssembleResult extends SurfaceData {
   id: string;
   buildMs: number;
   gridDims: [number, number, number];
+  /**
+   * Intake-to-engine centreline paths in model space, for the airflow
+   * particles in engine mode.
+   */
+  ductPaths: Array<Array<[number, number, number]>>;
 }
 
 /**
@@ -55,7 +66,10 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
 
   buildFuselage(ctx, g.fuselage);
   if (g.lerx) buildLerx(ctx, g.lerx);
-  buildSurfacePair(ctx, g.wing, 'wing-r', 'wing-l');
+
+  if (g.wing.vg) buildVariableWing(ctx, g.wing, 'wing-r', 'wing-l', opts.wingSweep);
+  else buildSurfacePair(ctx, g.wing, 'wing-r', 'wing-l');
+
   if (g.canard) buildSurfacePair(ctx, g.canard, 'canard-r', 'canard-l');
   if (g.tailH) buildSurfacePair(ctx, g.tailH, 'tail-h-r', 'tail-h-l');
   if (g.tailV) buildFin(ctx, g.tailV, 'tail-v', { side: 0 });
@@ -63,18 +77,33 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
     buildFin(ctx, g.tailVTwin, 'tail-v-r', { side: 1 });
     buildFin(ctx, g.tailVTwin, 'tail-v-l', { side: -1 });
   }
+  if (g.tailVee) {
+    buildFin(ctx, g.tailVee, 'tail-v-r', { side: 1 });
+    buildFin(ctx, g.tailVee, 'tail-v-l', { side: -1 });
+  }
   if (g.ventral) {
     buildFin(ctx, g.ventral, 'ventral-r', { side: 1, down: true });
     buildFin(ctx, g.ventral, 'ventral-l', { side: -1, down: true });
   }
 
   const ductTo = g.nozzle.engineFromZ ?? length * 0.7;
-  for (const intake of g.intakes) buildIntake(ctx, intake, ductTo);
+  const paths: DuctPath[] = [];
+  for (const intake of g.intakes) paths.push(...buildIntake(ctx, intake, ductTo));
+
   buildEngine(ctx, g.nozzle);
   buildNozzle(ctx, g.nozzle);
   buildCanopy(ctx, g.canopy);
+
+  if (g.bays) {
+    buildBays(
+      ctx,
+      opts.doorOpen === undefined ? g.bays : g.bays.map((b) => ({ ...b, doorOpen: opts.doorOpen })),
+    );
+  }
+  if (g.stores) buildStores(ctx, g.stores);
   if (g.blocks) buildBlocks(ctx, g.blocks);
   if (g.markings) buildMarkings(ctx, g.markings, COUNTRIES[config.spec.country].marking);
+  if (g.lettering) buildLettering(ctx, g.lettering);
 
   const surface = extractSurface(grid, {
     vpm,
@@ -85,10 +114,18 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
     partCount: PART_COUNT,
   });
 
+  const voxelSize = 1 / vpm;
+  const toModel = (pt: [number, number, number]): [number, number, number] => [
+    (pt[0] - origin[0]) * voxelSize,
+    (pt[1] - origin[1]) * voxelSize,
+    (pt[2] - origin[2]) * voxelSize,
+  ];
+
   return {
     ...surface,
     id: config.id,
     buildMs: performance.now() - t0,
     gridDims: [sx, sy, sz],
+    ductPaths: paths.map((p) => p.points.map(toModel)),
   };
 }

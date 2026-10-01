@@ -353,3 +353,44 @@
     scrollbar-width: none;
   }
 }
+
+/* ---------- dev test rig ---------- */
+
+.rig-labels {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rig-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 190px;
+  text-align: center;
+  transition: opacity var(--dur-fast) linear;
+}
+
+.rig-label b {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.rig-label span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+.chrome[hidden] {
+  display: none;
+}

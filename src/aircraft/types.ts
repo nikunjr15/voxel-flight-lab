@@ -103,6 +103,27 @@ export interface SurfaceParams {
   roundTip?: boolean;
   tipThicknessRatio?: number;
   palette?: PaletteSlot;
+  /**
+   * Present only on `variable-geometry` wings. The glove is the fixed inner
+   * section; the outer panel pivots at `pivotX` between `sweepMin` and
+   * `sweepMax`, and `SurfaceParams.sweep` is ignored in favour of those.
+   */
+  vg?: VariableGeometry;
+}
+
+export interface VariableGeometry {
+  /** Pivot station, metres from the centreline. */
+  pivotX: number;
+  /** Fixed glove sweep, degrees. */
+  gloveSweep: number;
+  gloveChord: number;
+  sweepMin: number;
+  sweepMax: number;
+  /** Streamwise chords of the movable panel at the fully forward setting. */
+  panelRootChord: number;
+  panelTipChord: number;
+  /** Physical panel length, pivot to tip. */
+  panelSpan: number;
 }
 
 export interface LerxParams {
@@ -149,6 +170,15 @@ export interface IntakeParams {
   offsetX?: number;
   /** Carves a duct through the fuselage toward the engine face. */
   duct?: boolean;
+  /**
+   * Bends the duct so there is no straight line of sight to the compressor
+   * face. Values are where the bore ends up at the engine, in metres.
+   */
+  sDuct?: { toY: number; toX?: number };
+  /** Centrebody for a nose intake, such as the MiG-21 radar cone. */
+  shockCone?: { length: number; radius: number };
+  /** Splitter plate standing the lip off the fuselage, for side intakes. */
+  splitter?: number;
 }
 
 export type NozzleKind = 'round' | 'twin-round' | 'vectoring-2d' | 'serrated';
@@ -164,6 +194,52 @@ export interface NozzleParams {
   /** Where the engine core starts, metres aft of the nose. */
   engineFromZ?: number;
   engineRadius?: number;
+  /** Sawtooth count around the lip. Any kind may carry serrations. */
+  serrations?: number;
+  /** Nozzle deflection in degrees, for thrust vectoring. */
+  vector?: number;
+}
+
+/** Internal weapons bay: a carved cavity with doors on their own part tags. */
+export interface BayParams {
+  fromZ: number;
+  toZ: number;
+  halfWidth: number;
+  /** Ceiling of the bay, metres above the waterline. */
+  atY: number;
+  depth: number;
+  /** 0 closed, 1 fully open. */
+  doorOpen?: number;
+  /** Side bays sit on the fuselage flanks rather than the belly. */
+  side?: boolean;
+}
+
+export type StoreKind = 'missile' | 'tank' | 'bomb' | 'rail';
+
+export interface StoreParams {
+  kind: StoreKind;
+  /** Centre: x from the centreline, y above the waterline, z aft of the nose. */
+  at: [number, number, number];
+  length: number;
+  radius: number;
+  mirror?: boolean;
+  /** Pylon between the store and the surface above it. */
+  pylon?: { height: number; chord: number };
+  /** Tail fin span; 0 for a smooth tank. */
+  fins?: number;
+  palette?: PaletteSlot;
+}
+
+/** Serial numbers and tail codes, drawn with the in-code 3x5 voxel font. */
+export interface LetteringParams {
+  text: string;
+  /** Where the text sits: fuselage flank or the fin. */
+  on: 'fuselage' | 'fin';
+  atZ: number;
+  atY: number;
+  /** Voxel height of a glyph. */
+  size?: number;
+  palette?: PaletteSlot;
 }
 
 export type BlockShape = 'box' | 'ellipsoid';
@@ -206,12 +282,17 @@ export interface AircraftGeometry {
   canard?: SurfaceParams;
   tailH?: SurfaceParams;
   tailV?: SurfaceParams;
-  /** Twin fins; `separation` sets the lateral offset of each. */
+  /** Twin fins; `separation` sets the lateral offset, `cant` the outward tilt. */
   tailVTwin?: SurfaceParams;
+  /** A true V-tail: a canted pair doing both jobs, with no separate stabilator. */
+  tailVee?: SurfaceParams;
   ventral?: SurfaceParams;
   intakes: IntakeParams[];
   nozzle: NozzleParams;
   canopy: CanopyParams;
+  bays?: BayParams[];
+  stores?: StoreParams[];
+  lettering?: LetteringParams[];
   blocks?: BlockParams[];
   markings?: MarkingParams;
 }

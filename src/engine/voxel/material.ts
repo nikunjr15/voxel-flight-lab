@@ -227,7 +227,9 @@ export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): M
     case 'emissive':
       base.roughness = 0.6;
       base.metalness = 0;
-      emissiveBoost = 1.15;
+      // Kept below 1 so an exhaust does not clip to flat yellow. Thrust mode
+      // raises it per part through the part-state texture instead.
+      emissiveBoost = 0.62;
       break;
     case 'glass':
       base.roughness = 0.1;

@@ -11,7 +11,15 @@ app.start();
 document.documentElement.classList.add('is-ready');
 
 if (import.meta.env.DEV) {
-  (window as unknown as { lab: App }).lab = app;
+  const w = window as unknown as Record<string, unknown>;
+  w.lab = app;
+  // Console handles for the test rig: build any config and inspect the result.
+  void Promise.all([import('./engine/build/client'), import('./scenes/rig/specimens')]).then(
+    ([client, rig]) => {
+      w.buildClient = client.buildClient;
+      w.SPECIMENS = rig.SPECIMENS;
+    },
+  );
 }
 
 if (import.meta.hot) {
