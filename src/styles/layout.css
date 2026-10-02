@@ -399,10 +399,17 @@
 /* Gallery captions sit shoulder to shoulder, so they are fixed width and
    never wrap: two spec lines, each on exactly one line. */
 .rig-labels--gallery .rig-label {
+  /* Width is set per caption from its projected slot; see Gallery. */
   width: 150px;
 }
 
-.rig-labels--gallery .rig-label b,
+/* The name may wrap onto a second line; the spec lines never do, so the
+   block keeps a predictable shape. */
+.rig-labels--gallery .rig-label b {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .rig-labels--gallery .rig-label span {
   white-space: nowrap;
   overflow: hidden;

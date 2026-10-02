@@ -7,6 +7,8 @@ import type { AircraftConfig } from '../../aircraft/types';
 
 interface Placed {
   config: AircraftConfig;
+  /** World width this jet owns in the row; the caption is sized to match. */
+  slot: number;
   model: VoxelModel;
   at: Vector3;
   voxels: number;
@@ -21,6 +23,9 @@ interface Placed {
  * 25k desktop ceiling, and therefore the number that actually applies.
  */
 const COMPARE_MAX_VOXELS = 21000;
+
+/** Minimum world width a gallery slot occupies, so captions never collide. */
+const MIN_SLOT = 9.5;
 
 /** Named batches, so a review can pull up exactly the set under discussion. */
 export const GALLERY_SETS: Record<string, string[]> = {
@@ -92,7 +97,9 @@ export class Gallery {
     const found = ids
       .map((id) => AIRCRAFT.find((a) => a.id === id))
       .filter((a): a is AircraftConfig => Boolean(a));
-    const configs = reverse ? [...found].reverse() : found;
+    // Rows read chronologically, which is the whole point of an era row.
+    const ordered = [...found].sort((a, b) => a.spec.firstFlight - b.spec.firstFlight);
+    const configs = reverse ? ordered.reverse() : ordered;
 
     let voxelSize = shared ? Gallery.sharedVoxelSize(configs, sizeFrom) : undefined;
 
@@ -102,13 +109,27 @@ export class Gallery {
     // and rebuild. Surface count scales with the square of resolution, so one
     // correction lands it.
     if (voxelSize !== undefined && sizeFrom === 'smallest') {
-      const probe = await Promise.all(
-        configs.map((c) => buildClient.build(c, { density, voxelSize })),
-      );
-      const worst = Math.max(...probe.map((p) => p.total));
-      if (worst > COMPARE_MAX_VOXELS * 1.1) {
-        voxelSize *= Math.sqrt(worst / COMPARE_MAX_VOXELS);
-        this.rebuilt = { from: worst, voxelSize };
+      // Count falls faster than the inverse square of block size, because
+      // thin features drop out entirely, so one correction lands under the
+      // cap rather than on it. A second pass recovers the resolution that
+      // overshoot gave away.
+      for (let pass = 0; pass < 2; pass++) {
+        const probe = await Promise.all(
+          configs.map((c) => buildClient.build(c, { density, voxelSize })),
+        );
+        const worst = Math.max(...probe.map((p) => p.total));
+        if (pass === 0) this.rebuilt = null;
+        if (worst > COMPARE_MAX_VOXELS * 1.1) {
+          voxelSize *= Math.sqrt(worst / COMPARE_MAX_VOXELS);
+          this.rebuilt = { from: worst, voxelSize };
+          continue;
+        }
+        // Under budget with room to spare: step back toward the cap once.
+        if (pass === 1 && worst < COMPARE_MAX_VOXELS * 0.8) {
+          voxelSize *= Math.sqrt(worst / COMPARE_MAX_VOXELS) ** 0.5;
+          this.rebuilt = { from: worst, voxelSize };
+        }
+        break;
       }
     }
     this.voxelSize = voxelSize ?? 0;
@@ -138,16 +159,19 @@ export class Gallery {
         inRow = 0;
         rowIndex++;
       }
-      // Half this model's span, plus a constant gutter, from the last one.
-      const step = size.x / 2 + 2.9;
-      cursor += inRow === 0 ? 0 : step;
+      // Each jet gets at least MIN_SLOT of width whatever its span, because
+      // the caption underneath is a fixed size and two narrow jets side by
+      // side would otherwise have their captions run together.
+      const halfSlot = Math.max(size.x / 2 + 2.4, MIN_SLOT / 2);
+      cursor += inRow === 0 ? 0 : halfSlot;
       holder.position.set(cursor, 0, -rowIndex * rowDepth);
-      cursor += size.x / 2 + 2.9;
+      cursor += halfSlot;
       inRow++;
 
       this.group.add(holder);
       this.placed.push({
         config,
+        slot: halfSlot * 2,
         model,
         at: holder.position.clone(),
         voxels: data.total,
@@ -208,6 +232,13 @@ export class Gallery {
       if (!el) continue;
       const p = this.placed[i].at.clone().add(this.group.position).add(offset);
       const s = project(p);
+      // The row is fitted to the frame, so how many pixels a metre is worth
+      // is only known now. Size each caption to its own slot rather than to a
+      // fixed pixel width, or neighbours overlap as soon as the row is long.
+      const edge = project(p.clone().setX(p.x + this.placed[i].slot / 2));
+      const width = Math.max(72, Math.abs(edge.x - s.x) * 2 - 8);
+      el.style.width = `${width}px`;
+      el.style.fontSize = width < 104 ? '0.9em' : '';
       el.style.transform = `translate(-50%, 0) translate(${s.x}px, ${s.y}px)`;
       el.style.opacity = s.visible ? '1' : '0';
     }

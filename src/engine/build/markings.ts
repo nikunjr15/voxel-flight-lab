@@ -91,7 +91,16 @@ function maskFor(
           if (inBar) return Math.abs(u) > barLen * 0.84 ? red : white;
         }
         if (Math.hypot(u, v) > discR) return 0;
-        if (!withStar) return blue;
+        if (!withStar) {
+          // Too small for a star, but a bare disc is unreadable as a US
+          // marking. A white cross through the disc keeps a device there.
+          const arm = discR * 0.82;
+          const bar = Math.max(0.6, discR * 0.3);
+          const inCross =
+            (Math.abs(u) <= arm && Math.abs(v) <= bar) ||
+            (Math.abs(v) <= arm && Math.abs(u) <= bar);
+          return inCross ? white : blue;
+        }
         return pointInPolygon(star, u, v) ? white : blue;
       };
     }

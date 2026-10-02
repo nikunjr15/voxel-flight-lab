@@ -73,18 +73,25 @@ export const SU27: AircraftConfig = {
       stations: [
         { t: 0, w: 0.08, h: 0.08, y: 0.08, e: 2 },
         { t: 0.04, w: 0.36, h: 0.32, y: 0.08, e: 2 },
-        { t: 0.12, w: 0.68, h: 0.56, y: 0.04, e: 2.1 },
-        { t: 0.22, w: 0.86, h: 0.66, y: 0.0, e: 2.3 },
-        { t: 0.34, w: 0.96, h: 0.7, y: -0.06, e: 2.8 },
-        { t: 0.48, w: 1.0, h: 0.66, y: -0.12, e: 3.2 },
-        { t: 0.62, w: 0.96, h: 0.6, y: -0.14, e: 3.2 },
-        { t: 0.76, w: 0.86, h: 0.54, y: -0.12, e: 3.0 },
-        { t: 0.9, w: 0.7, h: 0.46, y: -0.08, e: 2.8 },
-        { t: 1, w: 0.56, h: 0.4, y: -0.04, e: 2.6 },
+        { t: 0.12, w: 0.66, h: 0.54, y: 0.04, e: 2.1 },
+        { t: 0.22, w: 0.84, h: 0.64, y: 0.0, e: 2.3 },
+        { t: 0.34, w: 0.94, h: 0.68, y: -0.06, e: 2.8 },
+        { t: 0.48, w: 0.98, h: 0.64, y: -0.12, e: 3.2 },
+        { t: 0.62, w: 0.9, h: 0.58, y: -0.14, e: 3.2 },
+        // Aft of the wing the centre body narrows hard, leaving the nacelles
+        // standing apart with a tunnel between them and a long tail sting
+        // running back past the nozzles. That gap is the Flanker's signature
+        // in plan view.
+        { t: 0.73, w: 0.6, h: 0.48, y: -0.12, e: 2.8 },
+        { t: 0.82, w: 0.34, h: 0.36, y: -0.08, e: 2.4 },
+        { t: 0.92, w: 0.27, h: 0.3, y: -0.06, e: 2.3 },
+        { t: 1, w: 0.22, h: 0.25, y: -0.04, e: 2.2 },
       ],
       spine: { from: 7.6, to: 15.4, halfWidth: 0.5, height: 0.22 },
     },
-    lerx: { fromZ: 4.6, toZ: 9.4, maxHalfWidth: 1.5, atY: 0.04, thickness: 0.34 },
+    // Long ogival root extension, from beside the cockpit into the wing
+    // leading edge.
+    lerx: { fromZ: 3.8, toZ: 9.4, maxHalfWidth: 1.6, atY: 0.04, thickness: 0.36 },
     wing: {
       kind: 'cranked-delta',
       span: 14.7,
@@ -115,7 +122,7 @@ export const SU27: AircraftConfig = {
       tipChord: 1.5,
       sweep: 48,
       cant: 4,
-      separation: 1.3,
+      separation: 1.34,
       thickness: 0.22,
       atZ: 14.4,
       atY: 0.3,
@@ -125,7 +132,7 @@ export const SU27: AircraftConfig = {
       rootChord: 2.0,
       tipChord: 0.9,
       sweep: 48,
-      separation: 1.2,
+      separation: 1.3,
       cant: 10,
       thickness: 0.14,
       atZ: 17.0,
@@ -134,12 +141,13 @@ export const SU27: AircraftConfig = {
     },
     fairings: [
       {
-        // Engine nacelle, slung well outboard with a tunnel between the pair.
-        at: [1.22, -0.34],
-        fromZ: 7.6,
-        toZ: 21.7,
-        front: [0.48, 0.5],
-        back: [0.54, 0.54],
+        // Engine nacelle, slung well outboard. With the centre body narrowed
+        // aft, the pair stand clear of it and of each other.
+        at: [1.32, -0.34],
+        fromZ: 7.4,
+        toZ: 20.8,
+        front: [0.52, 0.52],
+        back: [0.56, 0.56],
         mirror: true,
         exponent: 2.4,
       },
@@ -152,18 +160,18 @@ export const SU27: AircraftConfig = {
         halfWidth: 0.42,
         height: 0.88,
         atY: -0.42,
-        offsetX: 1.22,
+        offsetX: 1.32,
         duct: true,
         splitter: 0.12,
-        sDuct: { toY: -0.34, toX: 1.22 },
+        sDuct: { toY: -0.34, toX: 1.32 },
       },
     ],
     nozzle: {
       kind: 'twin-round',
-      atZ: 21.8,
-      radius: 0.54,
+      atZ: 20.7,
+      radius: 0.56,
       atY: -0.34,
-      separation: 1.22,
+      separation: 1.32,
       length: 1.8,
       engineFromZ: 14.0,
       engineRadius: 0.5,
@@ -177,14 +185,8 @@ export const SU27: AircraftConfig = {
       tier: 'mfd',
       seats: 1,
     },
-    blocks: [
-      {
-        shape: 'box',
-        at: [0, -0.1, 21.6],
-        size: [0.34, 0.4, 2.2],
-        part: 'fuselage',
-        palette: 'skinDark',
-      },
+    stores: [
+      { kind: 'rail', at: [7.16, 0.02, 15.5], length: 2.3, radius: 0.11, mirror: true },
     ],
     markings: {
       radius: 0.78,
