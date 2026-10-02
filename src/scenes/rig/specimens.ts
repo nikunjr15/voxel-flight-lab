@@ -482,4 +482,59 @@ export const SPECIMENS: RigSpecimen[] = [
       { text: 'LAB', on: 'fin', atZ: 9.4, atY: 1.35, size: 0.1, palette: 'frame' },
     ];
   }),
+  specimen('chine', 'Chined fuselage', 'Hard lateral edge, flat deck and keel', (g) => {
+    g.fuselage.stations = g.fuselage.stations.map((st) => ({
+      ...st,
+      // Faired in behind the radome and out again at the tail, which is how a
+      // config should use it: switched on at one station the body steps.
+      chine: st.t < 0.08 ? 0 : st.t > 0.86 ? 0.35 : 1,
+      chineY: 0.44,
+      chineTop: 0.3,
+      chineBottom: 0.52,
+    }));
+  }),
+  specimen('chine-blend', 'Chine fairing in and out', 'Half-chined section, round fore and aft', (g) => {
+    g.fuselage.stations = g.fuselage.stations.map((st) => ({
+      ...st,
+      chine: st.t > 0.25 && st.t < 0.7 ? 0.5 : 0,
+      chineY: 0.4,
+    }));
+  }),
+  specimen('levcon', 'LEVCON', 'Movable surface let into the root extension', (g) => {
+    g.wing = { ...g.wing, span: 10, rootChord: 5.4, tipChord: 1.1, sweep: 42, atZ: 4.8 };
+    g.lerx = { fromZ: 2.6, toZ: 4.8, maxHalfWidth: 1.1, atY: -0.05, thickness: 0.2 };
+    g.levcon = {
+      span: 3.6,
+      rootOffset: 0.8,
+      rootChord: 1.0,
+      tipChord: 0.6,
+      sweep: 48,
+      dihedral: 0,
+      thickness: 0.16,
+      atZ: 3.0,
+      atY: 0.0,
+      palette: 'skinDark',
+    };
+    g.canard = undefined;
+    g.tailH = undefined;
+  }),
+  specimen('tailless', 'Tailless', 'No fin, no stabiliser: control from the wing alone', (g) => {
+    g.wing = {
+      ...g.wing,
+      kind: 'cranked-delta',
+      span: 11,
+      rootChord: 7.4,
+      tipChord: 0.6,
+      sweep: 55,
+      atZ: 3.2,
+      kink: { at: 0.58, chord: 2.4, sweep: 38 },
+    };
+    g.tailV = undefined;
+    g.tailH = undefined;
+    g.canard = undefined;
+  }),
+  specimen('bay-closed', 'Weapons bay, closed', 'Stealth default: doors shut, nothing hung outside', (g) => {
+    g.bays = [{ fromZ: 4.4, toZ: 7.6, halfWidth: 0.6, atY: -0.5, depth: 0.7, doorOpen: 0 }];
+    g.stores = undefined;
+  }),
 ];

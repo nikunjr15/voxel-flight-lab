@@ -17,6 +17,14 @@ import { GRIPEN } from './data/gripen';
 import { TYPHOON } from './data/typhoon';
 import { SU30MKI } from './data/su30mki';
 import { TEJAS } from './data/tejas';
+import { F22 } from './data/f22';
+import { F35 } from './data/f35';
+import { SU57 } from './data/su57';
+import { J20 } from './data/j20';
+import { AMCA } from './data/amca';
+import { GCAP } from './data/gcap';
+import { NGAD } from './data/ngad';
+import { VAJRA } from './data/vajra';
 import type { AircraftConfig } from './types';
 
 /** Exhibit order. Chapter order follows this list. */
@@ -40,6 +48,14 @@ export const AIRCRAFT: AircraftConfig[] = [
   TYPHOON,
   SU30MKI,
   TEJAS,
+  F22,
+  F35,
+  SU57,
+  J20,
+  AMCA,
+  GCAP,
+  NGAD,
+  VAJRA,
 ];
 
 /**
@@ -61,6 +77,21 @@ export const SUGGESTED_PAIRS: Array<{ a: string; b: string; note: string }> = [
     a: 'f-15',
     b: 'su-27',
     note: 'Two air superiority fighters drawn against each other, one a conventional big-wing design, the other a blended lifting body.',
+  },
+  {
+    a: 'f-15',
+    b: 'f-22',
+    note: 'The same job, a generation apart. Everything the Eagle rounds off, the Raptor flattens, and everything the Eagle hangs outside, the Raptor swallows.',
+  },
+  {
+    a: 'su-27',
+    b: 'su-57',
+    note: 'The Flanker idea carried into the fifth generation: the same wide body and spaced engines, reshaped for radar rather than replaced.',
+  },
+  {
+    a: 'tejas',
+    b: 'amca',
+    note: 'What India has flown beside what it is designing. One is a small, conventional delta; the other is shaped for radar from the first line.',
   },
 ];
 

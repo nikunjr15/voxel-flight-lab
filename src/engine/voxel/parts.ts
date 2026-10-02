@@ -16,6 +16,8 @@ export const PARTS = [
   'flap-r',
   'canard-l',
   'canard-r',
+  'levcon-l',
+  'levcon-r',
   'tail-v',
   'tail-v-l',
   'tail-v-r',
@@ -100,6 +102,8 @@ export const PART_LABEL: Record<PartId, string> = {
   airbrake: 'Airbrake',
   probe: 'Pitot probe',
   'wingtip-rail': 'Wingtip rail',
+  'levcon-l': 'Port leading-edge vortex controller',
+  'levcon-r': 'Starboard leading-edge vortex controller',
 };
 
 /** Which way each part travels in the exploded view. Unit vectors, model space. */
@@ -112,6 +116,8 @@ export const PART_EXPLODE_DIR: Partial<Record<PartId, [number, number, number]>>
   'flap-r': [1, 0.1, -0.3],
   'canard-l': [-1, 0.25, 0.25],
   'canard-r': [1, 0.25, 0.25],
+  'levcon-l': [-1, 0.2, 0.4],
+  'levcon-r': [1, 0.2, 0.4],
   'tail-v': [0, 1, -0.2],
   'tail-v-l': [-0.55, 1, -0.2],
   'tail-v-r': [0.55, 1, -0.2],
@@ -153,6 +159,8 @@ export const SKIN_PARTS: PartId[] = [
   'flap-r',
   'canard-l',
   'canard-r',
+  'levcon-l',
+  'levcon-r',
   'tail-v',
   'tail-v-l',
   'tail-v-r',

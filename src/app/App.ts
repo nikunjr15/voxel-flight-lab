@@ -179,6 +179,9 @@ export class App {
       // Two jets side by side is the compare case, so size to the smaller one.
       ids.length === 2 ? 'smallest' : 'largest',
       // Plan view reads fine as one long row; an oblique view does not.
+      // Wrapping plan view into rows is not an option: the caption offset is
+      // one world vector for the whole gallery, so a second row puts its
+      // captions on top of the first row's.
       view === 'plan' || ids.length <= 4 ? Infinity : Math.ceil(ids.length / 2),
     );
     console.info(`[gallery ${set}]\n${gallery.table()}`);

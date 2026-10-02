@@ -1,5 +1,5 @@
 import { applyFill, FillMode, VoxelGrid } from './VoxelGrid';
-import { lerp, thicknessProfile, V3, vCross, vDot, vNorm, vSub } from '../util/math';
+import { clamp, lerp, thicknessProfile, V3, vCross, vDot, vNorm, vSub } from '../util/math';
 
 /** Orthonormal basis in grid space. ex = span, ey = thickness, ez = chord. */
 export interface Frame {
@@ -105,6 +105,21 @@ export interface LoftSample {
    * composes with the superellipse exponent rather than replacing it.
    */
   tri?: number;
+  /**
+   * Blend toward a chined section in 0..1. 0 is the superellipse above; 1 is
+   * a hard lateral edge at `chineY` with flat planes running up to a flat
+   * deck and down to a flat underside -- the shaping a low-observable
+   * forward fuselage is built from. Values in between fair a chine in and
+   * out along the length.
+   *
+   * `shell` is ignored on a chined section; nothing glazed needs one.
+   */
+  chine?: number;
+  /** Height fraction of the chine edge, 0 at the keel and 1 at the deck. */
+  chineY?: number;
+  /** Half-width at the deck and at the keel, as fractions of `w`. */
+  chineTop?: number;
+  chineBottom?: number;
 }
 
 export interface LoftOptions extends FillOptions {
@@ -140,6 +155,10 @@ export function fillLoftZ(
     const y0 = Math.max(0, Math.floor(Math.max(s.cy - h, clipMin)));
     const y1 = Math.min(grid.sy - 1, Math.ceil(Math.min(s.cy + h, clipMax)));
     const tri = s.tri ?? 0;
+    const chine = s.chine ?? 0;
+    const chineY = clamp(s.chineY ?? 0.45, 0.1, 0.9);
+    const chineTop = s.chineTop ?? 0.3;
+    const chineBottom = s.chineBottom ?? 0.5;
     for (let y = y0; y <= y1; y++) {
       const ny = Math.abs((y - s.cy) / h);
       const py = e === 2 ? ny * ny : Math.pow(ny, e);
@@ -150,6 +169,28 @@ export function fillLoftZ(
         const ty = (y - (s.cy - h)) / (2 * h);
         wRow = w * (tri > 0 ? 1 - tri * (1 - ty) : 1 + tri * ty);
         if (wRow < 0.5) continue;
+      }
+      if (chine > 0) {
+        // Straight-line facets meeting at the chine, blended against the row
+        // half-width the superellipse would have given. Solved per row rather
+        // than tested per voxel, because a chined section has a flat deck and
+        // a flat keel: the radial test closes the section to a point there and
+        // would round off exactly the edges that make the shape read.
+        const ty = (y - (s.cy - h)) / (2 * h);
+        const f =
+          ty >= chineY
+            ? chineTop + (1 - chineTop) * (1 - (ty - chineY) / (1 - chineY))
+            : chineBottom + (1 - chineBottom) * (1 - (chineY - ty) / chineY);
+        const round = wRow * (e === 2 ? Math.sqrt(1 - py) : Math.pow(1 - py, 1 / e));
+        const half = round + (wRow * f - round) * chine;
+        if (half < 0.5) continue;
+        const fx0 = Math.max(0, Math.floor(s.cx - half));
+        const fx1 = Math.min(grid.sx - 1, Math.ceil(s.cx + half));
+        for (let x = fx0; x <= fx1; x++) {
+          if (Math.abs(x - s.cx) > half) continue;
+          applyFill(grid, mode, x, y, z, opts.pal, opts.part);
+        }
+        continue;
       }
       for (let x = x0; x <= x1; x++) {
         const nx = Math.abs((x - s.cx) / wRow);

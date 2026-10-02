@@ -84,8 +84,8 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
   const planform = Math.sqrt(length * Math.max(1, g.bbox.span));
   const vpm = opts.voxelSize
     ? density / opts.voxelSize
-    : opts.targetLengthVoxels
-      ? (opts.targetLengthVoxels * density) / length
+    : (opts.targetLengthVoxels ?? g.targetLengthVoxels)
+      ? ((opts.targetLengthVoxels ?? g.targetLengthVoxels)! * density) / length
       : (TARGET_PLANFORM_VOXELS * density) / planform;
 
   const sx = Math.ceil(g.bbox.span * vpm) + 10;
@@ -108,6 +108,9 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
   else buildSurfacePair(ctx, g.wing, 'wing-r', 'wing-l');
 
   if (g.canard) buildSurfacePair(ctx, g.canard, 'canard-r', 'canard-l');
+  // Built after the root extensions so a LEVCON sits on top of the glove it
+  // hinges from rather than being overwritten by it.
+  if (g.levcon) buildSurfacePair(ctx, g.levcon, 'levcon-r', 'levcon-l');
   if (g.tailH) buildSurfacePair(ctx, mountedTail(g.tailH, g.tailV), 'tail-h-r', 'tail-h-l');
   if (g.tailV) buildFin(ctx, g.tailV, 'tail-v', { side: 0 });
   if (g.tailVTwin) {

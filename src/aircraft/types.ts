@@ -18,7 +18,12 @@ export type AircraftStatus = 'historic' | 'in-service' | 'development' | 'concep
  * out entirely rather than guessed; the UI hides missing rows.
  */
 export interface AircraftSpec {
-  firstFlight: number;
+  /**
+   * Year of first flight. Absent for an aircraft that has not flown: a
+   * target date for a programme still in development is not a fact, and
+   * putting one here would read as one.
+   */
+  firstFlight?: number;
   machMax?: number;
   topSpeedKmh?: number;
   engines: { count: number; type: EngineType; name?: string };
@@ -26,9 +31,14 @@ export interface AircraftSpec {
   role: string;
   country: CountryCode;
   generation: Generation;
-  lengthM: number;
-  spanM: number;
-  heightM: number;
+  /**
+   * Published dimensions. Absent where a programme has not released them:
+   * the model still has to be built to some size, but a modelling assumption
+   * is not a figure and does not belong in the spec.
+   */
+  lengthM?: number;
+  spanM?: number;
+  heightM?: number;
   status: AircraftStatus;
 }
 
@@ -62,6 +72,20 @@ export interface FuselageStation {
    * down, as on the Me 262); negative narrows the top. 0 is symmetric.
    */
   tri?: number;
+  /**
+   * Blend toward a chined section in 0..1: a hard lateral edge with flat
+   * planes above and below it instead of a rounded loft. This is the shaping
+   * a low-observable forward fuselage is built from, and it is what makes a
+   * fifth-generation airframe read as faceted next to a fourth-generation
+   * one. Fair it in and out along the length rather than switching it on at
+   * one station, or the body steps.
+   */
+  chine?: number;
+  /** Height fraction of the chine edge, 0 at the keel and 1 at the deck. */
+  chineY?: number;
+  /** Half-width at the deck and at the keel, as fractions of w. */
+  chineTop?: number;
+  chineBottom?: number;
 }
 
 export interface FuselageParams {
@@ -262,8 +286,6 @@ export interface BayParams {
   depth: number;
   /** 0 closed, 1 fully open. */
   doorOpen?: number;
-  /** Side bays sit on the fuselage flanks rather than the belly. */
-  side?: boolean;
 }
 
 export type StoreKind = 'missile' | 'tank' | 'bomb' | 'rail';
@@ -344,10 +366,26 @@ export interface MarkingParams {
 export interface AircraftGeometry {
   /** Used to size the voxel grid. */
   bbox: { span: number; height: number };
+  /**
+   * Escape hatch for an outlier. Resolution normally comes from the planform
+   * rule, which assumes surface area tracks length times span. A deep, boxy,
+   * heavily chined body breaks that assumption -- flat decks and keels are
+   * large exposed planes where a round loft curves away -- and lands over the
+   * voxel budget. Set this to pull one aircraft back under it.
+   */
+  targetLengthVoxels?: number;
   fuselage: FuselageParams;
   lerx?: LerxParams;
   wing: SurfaceParams;
   canard?: SurfaceParams;
+  /**
+   * Leading-edge vortex controller: a small movable surface let into the
+   * root extension, as on the Su-57. Geometrically a short, very low-aspect
+   * pair, so it uses the same builder as a canard, but it is tagged
+   * separately because it is part of the wing, not a foreplane -- and
+   * reading it as a canard would be the wrong story about the aircraft.
+   */
+  levcon?: SurfaceParams;
   tailH?: SurfaceParams;
   tailV?: SurfaceParams;
   /** Twin fins; `separation` sets the lateral offset, `cant` the outward tilt. */

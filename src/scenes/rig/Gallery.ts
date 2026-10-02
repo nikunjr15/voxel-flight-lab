@@ -39,6 +39,12 @@ export const GALLERY_SETS: Record<string, string[]> = {
   '2d': ['rafale', 'gripen', 'typhoon', 'su-30mki', 'tejas'],
   'compare-canards': ['rafale', 'typhoon', 'gripen'],
   su30: ['su-27', 'su-30mki'],
+  '2e': ['f-22', 'f-35', 'su-57', 'j-20', 'amca', 'gcap', 'ngad', 'vajra'],
+  era5: ['f-22', 'f-35', 'su-57', 'j-20'],
+  era6: ['amca', 'gcap', 'ngad', 'vajra'],
+  // Acceptance test for chapter 6: the stealth pair must read as faceted and
+  // planar beside the rounded fourth-generation pair.
+  'compare-stealth': ['f-15', 'f-22', 'su-27', 'su-57'],
   all: AIRCRAFT.map((a) => a.id),
 };
 
@@ -101,7 +107,9 @@ export class Gallery {
       .map((id) => AIRCRAFT.find((a) => a.id === id))
       .filter((a): a is AircraftConfig => Boolean(a));
     // Rows read chronologically, which is the whole point of an era row.
-    const ordered = [...found].sort((a, b) => a.spec.firstFlight - b.spec.firstFlight);
+    // Chronological, with anything that has not flown at the end of the row.
+    const year = (c: AircraftConfig): number => c.spec.firstFlight ?? Infinity;
+    const ordered = [...found].sort((a, b) => year(a) - year(b));
     const configs = reverse ? ordered.reverse() : ordered;
 
     let voxelSize = shared ? Gallery.sharedVoxelSize(configs, sizeFrom) : undefined;
@@ -212,10 +220,17 @@ export class Gallery {
     const { spec } = config;
     const el = document.createElement('div');
     el.className = 'rig-label';
+    // A concept is labelled as one everywhere it appears. Nothing in the
+    // roster should be mistakable for an aircraft that has actually flown.
+    const concept = spec.status === 'concept' ? '<i>concept</i>' : '';
     el.innerHTML =
-      `<b>${config.exhibitNo} — ${config.designation}</b>` +
-      `<span>${spec.lengthM} m · ${spec.spanM} m span</span>` +
-      `<span>gen ${spec.generation} · ${spec.firstFlight}</span>`;
+      `<b>${config.exhibitNo} — <u>${config.designation}</u>${concept}</b>` +
+      `<span>${
+        spec.lengthM !== undefined && spec.spanM !== undefined
+          ? `${spec.lengthM} m · ${spec.spanM} m span`
+          : 'dimensions not published'
+      }</span>` +
+      `<span>gen ${spec.generation} · ${spec.firstFlight ?? 'not flown'}</span>`;
     el.dataset.span = size.x.toFixed(1);
     this.labelLayer.appendChild(el);
   }

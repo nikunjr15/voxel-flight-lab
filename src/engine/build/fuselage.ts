@@ -16,6 +16,14 @@ export function buildFuselage(ctx: BuildCtx, p: FuselageParams): void {
   const eT = new Track(p.stations.map((s) => ({ t: s.t, v: s.e ?? 2 })));
 
   const triT = new Track(p.stations.map((s) => ({ t: s.t, v: s.tri ?? 0 })));
+  // Chining is interpolated like every other section parameter, so a config
+  // can run the facets in behind the radome and out again ahead of the tail
+  // without the body stepping where the shaping starts.
+  const chined = p.stations.some((s) => (s.chine ?? 0) > 0);
+  const chineT = new Track(p.stations.map((s) => ({ t: s.t, v: s.chine ?? 0 })));
+  const chineYT = new Track(p.stations.map((s) => ({ t: s.t, v: s.chineY ?? 0.45 })));
+  const chineTopT = new Track(p.stations.map((s) => ({ t: s.t, v: s.chineTop ?? 0.3 })));
+  const chineBotT = new Track(p.stations.map((s) => ({ t: s.t, v: s.chineBottom ?? 0.5 })));
   const radomeTo = p.radomeTo ?? 0.07;
   const noseTo = p.noseTo ?? 0.3;
 
@@ -37,6 +45,10 @@ export function buildFuselage(ctx: BuildCtx, p: FuselageParams): void {
       h,
       e: clamp(eT.at(t), 1.6, 6),
       tri: clamp(triT.at(t), -1, 1),
+      chine: chined ? clamp(chineT.at(t), 0, 1) : 0,
+      chineY: clamp(chineYT.at(t), 0.1, 0.9),
+      chineTop: clamp(chineTopT.at(t), 0.02, 1),
+      chineBottom: clamp(chineBotT.at(t), 0.02, 1),
     };
   };
 
