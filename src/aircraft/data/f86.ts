@@ -59,7 +59,7 @@ export const F86: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#9aa0a6',
     nozzle: '#6e6a66',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#b22234',
   },
   geometry: {
@@ -144,7 +144,7 @@ export const F86: AircraftConfig = {
     markings: {
       radius: 0.78,
       wing: { x: 2.9, chord: 0.5 },
-      fuselageZ: 6.3,
+      fuselageZ: 8.6,
     },
   },
 };

@@ -59,7 +59,7 @@ export const MIG29: AircraftConfig = {
     hud: '#7cf0c4',
     metal: '#949aa0',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#c21b17',
   },
   geometry: {
@@ -165,7 +165,7 @@ export const MIG29: AircraftConfig = {
     markings: {
       radius: 0.66,
       wing: { x: 2.8, chord: 0.4 },
-      fuselageZ: 10.6,
+      fuselageZ: 13.4,
     },
   },
 };

@@ -31,7 +31,12 @@ function pointInPolygon(pts: Array<[number, number]>, x: number, y: number): boo
  * Builds a 2D mask returning a palette index, or 0 for "leave the skin alone".
  * `u` runs along the chord, `v` across it, both in voxel units from the centre.
  */
-function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
+function maskFor(
+  ctx: BuildCtx,
+  marking: CountryMarking,
+  radius: number,
+  allowBars = true,
+): Mask {
   const pal = marking.colors.map((c) => ctx.pal.add(c, 'opaque'));
 
   switch (marking.style) {
@@ -64,7 +69,7 @@ function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
     }
 
     case 'star-bar': {
-      const withBars = radius >= 9;
+      const withBars = allowBars && radius >= 9;
       // Without bars the disc is all there is, so the star grows to fill it;
       // at 0.72 it erodes to an unreadable blob at exhibit sizes.
       const star = starPolygon(radius * (withBars ? 0.72 : 0.8));
@@ -72,7 +77,12 @@ function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
       // frames the enlarged star instead of being eaten by it.
       const discR = radius * (withBars ? 0.82 : 1.0);
       const [blue, white, red] = [pal[0], pal[1] ?? pal[0], pal[2] ?? pal[0]];
-      // Below roughly nine voxels across, the bars turn to noise.
+      // Below roughly nine voxels across, the bars turn to noise. Below five,
+      // the star goes too: a five-pointed polygon rasterised into eight or
+      // nine voxels has no points left, and on a curved fuselage -- where
+      // each row is painted onto whichever voxel is outermost -- it smears
+      // into fragments. A plain disc at that size is clean and honest.
+      const withStar = radius >= 5;
       const barLen = radius * 2.0;
       const barH = radius * 0.46;
       return (u, v) => {
@@ -81,6 +91,7 @@ function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
           if (inBar) return Math.abs(u) > barLen * 0.84 ? red : white;
         }
         if (Math.hypot(u, v) > discR) return 0;
+        if (!withStar) return blue;
         return pointInPolygon(star, u, v) ? white : blue;
       };
     }
@@ -111,7 +122,9 @@ const WING_PARTS = new Set(
   (['wing-l', 'wing-r', 'flap-l', 'flap-r', 'lerx'] as PartId[]).map((id) => PART_INDEX[id]),
 );
 const BODY_PARTS = new Set(
-  (['fuselage', 'nose', 'spine', 'lerx'] as PartId[]).map((id) => PART_INDEX[id]),
+  (['fuselage', 'nose', 'spine', 'lerx', 'intake-l', 'intake-r', 'intake-c'] as PartId[]).map(
+    (id) => PART_INDEX[id],
+  ),
 );
 
 /**
@@ -178,8 +191,12 @@ export function buildMarkings(
   }
 
   if (p.fuselageZ !== undefined) {
-    const bodyRadius = radius * 0.72;
-    const bodyMask = maskFor(ctx, { ...marking, style }, bodyRadius);
+    // No bars on the body. A fuselage marking is painted onto the outermost
+    // voxel of each row, so the mask is wrapped around a curved surface; bars
+    // run far enough round the curve to break into fragments. The disc alone
+    // survives the projection. Kept small for the same reason.
+    const bodyRadius = radius * 0.6;
+    const bodyMask = maskFor(ctx, { ...marking, style }, bodyRadius, false);
     const cz = ctx.gzAft(p.fuselageZ);
     const cy = ctx.gy(0.1);
     for (const side of [1, -1] as const) {

@@ -248,15 +248,23 @@ export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: F
     }
     if (lz < le || lz > le + chord) return false;
     const c = (lz - le) / chord;
-    const th = Math.max(
-      p.thickness * thicknessProfile(c) * lerp(1, tipRatio, s / Math.max(1e-6, p.span)),
-      1.0,
-    );
+    const spanScale = lerp(1, tipRatio, s / Math.max(1e-6, p.span));
+    // A surface only two or three voxels thick cannot carry a profile at all,
+    // so it is built as a constant slab rather than stepping once per column.
+    const th =
+      p.thickness * spanScale < 3
+        ? Math.max(p.thickness * spanScale * (c <= 0 || c >= 1 ? 0 : 1), 1.0)
+        : Math.max(p.thickness * thicknessProfile(c) * spanScale, 1.0);
     // Quantise to whole voxels. A fractional thickness puts the upper surface
     // at non-integer heights, so neighbouring columns round differently and
     // the top of the wing dithers between top faces and step faces -- which
     // reads from above as soft dirty patches on what should be flat paint.
-    return Math.abs(ly) <= Math.round(th) * 0.5 + 1e-4;
+    //
+    // The comparison is strict and carries no epsilon: on a slab one voxel
+    // thick the half-extent is exactly 0.5, so a tolerance lets columns whose
+    // offset happens to land on the boundary take a second layer, and the
+    // trailing edge comes out ragged.
+    return Math.abs(ly) < Math.max(1, Math.round(th)) * 0.5;
   };
 
   fillFrame(grid, frame, [0, -halfT, zMin - 1], [localSpan, halfT, zMax + 1], inside, opts);

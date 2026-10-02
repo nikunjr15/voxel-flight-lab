@@ -59,7 +59,7 @@ export const MIG21: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#99a0a6',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#c21b17',
   },
   geometry: {
@@ -167,7 +167,7 @@ export const MIG21: AircraftConfig = {
     markings: {
       radius: 0.62,
       wing: { x: 1.9, chord: 0.45 },
-      fuselageZ: 10.2,
+      fuselageZ: 4.6,
     },
   },
 };

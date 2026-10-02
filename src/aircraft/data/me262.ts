@@ -60,7 +60,7 @@ export const ME262: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#8d9198',
     nozzle: '#5f5b57',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#c8102e',
   },
   geometry: {

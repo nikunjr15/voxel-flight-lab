@@ -25,7 +25,7 @@ const PALETTE = {
   hud: '#7cf0c4',
   metal: '#8f949a',
   nozzle: '#6f6a66',
-  exhaust: '#ff8a3c',
+  exhaust: '#6b3417',
   store: '#6b7681',
   pylon: '#59636c',
   accent: '#ff6a2b',

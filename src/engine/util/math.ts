@@ -31,10 +31,23 @@ export const vNorm = (a: V3): V3 => {
   return [a[0] / l, a[1] / l, a[2] / l];
 };
 
-/** Symmetric airfoil-like thickness distribution, 0 at both ends, peak 1 near 1/3 chord. */
+/**
+ * Thickness distribution across the chord: flat over the middle, tapering
+ * only near the edges.
+ *
+ * A true airfoil curve varies thickness everywhere, and once quantised to
+ * whole voxels that puts a step every few columns, so the wing terraced like
+ * corrugated sheet. A plateau gives one large flat top face with steps only
+ * at the leading and trailing edges, which is what reads as a wing at voxel
+ * resolution.
+ */
+export const EDGE_TAPER = 0.15;
+
 export const thicknessProfile = (c: number): number => {
   if (c <= 0 || c >= 1) return 0;
-  return Math.sqrt(c) * (1 - c) * 2.598;
+  if (c < EDGE_TAPER) return Math.sqrt(c / EDGE_TAPER);
+  if (c > 1 - EDGE_TAPER) return (1 - c) / EDGE_TAPER;
+  return 1;
 };
 
 /** Smooth 0..1 ramp with per-item stagger, used for scatter waves. */

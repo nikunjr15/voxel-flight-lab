@@ -65,7 +65,7 @@ const FACES: Array<{
  * real concavity -- a wing root, a voxel under a store or inside an intake --
  * goes dark.
  */
-function faceOcclusion(grid: VoxelGrid, x: number, y: number, z: number): number {
+function faceOcclusion(grid: VoxelGrid, x: number, y: number, z: number, part: number): number {
   let worst = 0;
   for (let f = 0; f < FACES.length; f++) {
     const { d, u, v } = FACES[f];
@@ -76,7 +76,15 @@ function faceOcclusion(grid: VoxelGrid, x: number, y: number, z: number): number
         const nx = x + d[0] + u[0] * a + v[0] * b;
         const ny = y + d[1] + u[1] * a + v[1] * b;
         const nz = z + d[2] + u[2] * a + v[2] * b;
-        if (grid.has(nx, ny, nz)) occ++;
+        if (!grid.inBounds(nx, ny, nz)) continue;
+        // Only a different part occludes. Within one part a neighbour that
+        // stands proud is just the staircase of a lofted curve, and shading
+        // every one of those turned the fuselage into horizontal stripes.
+        // A real junction -- a wing root, an intake lip, a canopy frame, a
+        // store under a wing -- crosses a part boundary and still darkens.
+        if (grid.get(nx, ny, nz) === 0) continue;
+        if (grid.partAt(nx, ny, nz) === part) continue;
+        occ++;
       }
     }
     if (occ > worst) worst = occ;
@@ -199,7 +207,7 @@ export function extractSurface(grid: VoxelGrid, opts: ExtractOptions): SurfaceDa
       centroidAcc[part * 3 + 1] += my;
       centroidAcc[part * 3 + 2] += mz;
 
-      ao[j] = faceOcclusion(grid, x, y, z);
+      ao[j] = faceOcclusion(grid, x, y, z, part);
 
       // Dispersal cloud: push outward from the centroid onto a jittered shell so
       // the scatter reads as the airframe blowing apart, not as random noise.

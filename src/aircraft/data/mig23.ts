@@ -59,7 +59,7 @@ export const MIG23: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#99a0a6',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#c21b17',
   },
   geometry: {
@@ -179,7 +179,7 @@ export const MIG23: AircraftConfig = {
     markings: {
       radius: 0.5,
       wing: { x: 1.42, chord: 0.45 },
-      fuselageZ: 11.6,
+      fuselageZ: 12.2,
     },
   },
 };

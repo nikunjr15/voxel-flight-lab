@@ -59,7 +59,7 @@ export const GNAT: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#99a0a6',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#ff9933',
   },
   geometry: {
@@ -148,7 +148,7 @@ export const GNAT: AircraftConfig = {
     markings: {
       radius: 0.52,
       wing: { x: 1.9, chord: 0.5 },
-      fuselageZ: 5.6,
+      fuselageZ: 6.4,
     },
   },
 };

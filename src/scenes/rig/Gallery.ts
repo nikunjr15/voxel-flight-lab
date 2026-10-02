@@ -14,10 +14,6 @@ interface Placed {
 }
 
 /** Roughly what a jet costs at TARGET_PLANFORM_VOXELS, measured across the roster. */
-// Deliberately on the high side: short wide airframes carry more surface
-// than the median, and the estimate has to hold for the worst case.
-const TYPICAL_VOXELS = 13500;
-
 /**
  * Ceiling for the larger jet in a compare pair. The mobile cap of about 9k is
  * the binding one: mobile builds at density 0.65, and surface count scales
@@ -48,6 +44,8 @@ export class Gallery {
   readonly placed: Placed[] = [];
   /** Shared world block size in metres; 0 when each jet uses its own grid. */
   voxelSize = 0;
+  /** Set when a compare pair had to be coarsened after measuring. */
+  rebuilt: { from: number; voxelSize: number } | null = null;
   private readonly labelLayer: HTMLElement;
 
   constructor(parent: HTMLElement) {
@@ -72,17 +70,10 @@ export class Gallery {
     if (from === 'largest') return Math.max(...planforms) / TARGET_PLANFORM_VOXELS;
 
     // A compare pair sizes to the smaller jet, because sizing to the larger
-    // leaves something like the Gnat as unreadable mush beside it. But a wide
-    // size ratio then pushes the larger jet far past budget, so the block is
-    // coarsened until the larger one fits the cap.
-    //
-    // Surface count scales with (planform / voxelSize)^2, and at
-    // TARGET_PLANFORM_VOXELS a jet lands near TYPICAL_VOXELS. That gives the
-    // coarsest-allowed block directly, without having to build and measure.
-    const small = Math.min(...planforms) / TARGET_PLANFORM_VOXELS;
-    const large = Math.max(...planforms);
-    const capped = large / (TARGET_PLANFORM_VOXELS * Math.sqrt(COMPARE_MAX_VOXELS / TYPICAL_VOXELS));
-    return Math.max(small, capped);
+    // leaves something like the Gnat as unreadable mush beside it. If that
+    // turns out to overrun the budget, `load` measures the built result and
+    // rebuilds once at a coarser block -- no estimate to keep tuned.
+    return Math.min(...planforms) / TARGET_PLANFORM_VOXELS;
   }
 
   /**
@@ -103,7 +94,23 @@ export class Gallery {
       .filter((a): a is AircraftConfig => Boolean(a));
     const configs = reverse ? [...found].reverse() : found;
 
-    const voxelSize = shared ? Gallery.sharedVoxelSize(configs, sizeFrom) : undefined;
+    let voxelSize = shared ? Gallery.sharedVoxelSize(configs, sizeFrom) : undefined;
+
+    // A compare pair sizes to the smaller jet, which can push the larger one
+    // past budget. Rather than predict that, build once, measure, and if the
+    // worst case overruns by more than a tenth, coarsen by the measured ratio
+    // and rebuild. Surface count scales with the square of resolution, so one
+    // correction lands it.
+    if (voxelSize !== undefined && sizeFrom === 'smallest') {
+      const probe = await Promise.all(
+        configs.map((c) => buildClient.build(c, { density, voxelSize })),
+      );
+      const worst = Math.max(...probe.map((p) => p.total));
+      if (worst > COMPARE_MAX_VOXELS * 1.1) {
+        voxelSize *= Math.sqrt(worst / COMPARE_MAX_VOXELS);
+        this.rebuilt = { from: worst, voxelSize };
+      }
+    }
     this.voxelSize = voxelSize ?? 0;
 
     // A single row of eight is so wide that an oblique view has to pull back
@@ -209,7 +216,8 @@ export class Gallery {
   /** Per-jet voxel table, printed to the console for the review notes. */
   table(): string {
     const head = this.voxelSize
-      ? `shared block size ${(this.voxelSize * 100).toFixed(1)} cm`
+      ? `shared block size ${(this.voxelSize * 100).toFixed(1)} cm` +
+        (this.rebuilt ? ` (coarsened from a ${this.rebuilt.from} voxel build)` : '')
       : 'per-jet block size';
     const rows = this.placed.map(
       (p) =>

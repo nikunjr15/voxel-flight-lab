@@ -59,7 +59,7 @@ export const SU27: AircraftConfig = {
     hud: '#7cf0c4',
     metal: '#949aa0',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     store: '#6f7a84',
     pylon: '#59636c',
     accent: '#c21b17',
@@ -189,7 +189,7 @@ export const SU27: AircraftConfig = {
     markings: {
       radius: 0.78,
       wing: { x: 3.6, chord: 0.4 },
-      fuselageZ: 13.4,
+      fuselageZ: 16.8,
     },
   },
 };

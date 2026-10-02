@@ -236,9 +236,10 @@ export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): M
     case 'emissive':
       base.roughness = 0.6;
       base.metalness = 0;
-      // Kept below 1 so an exhaust does not clip to flat yellow. Thrust mode
-      // raises it per part through the part-state texture instead.
-      emissiveBoost = 0.62;
+      // Low at rest: a cold tailpipe is dark. Thrust mode raises the
+      // emissive channel per part through the part-state texture, which is
+      // what makes an afterburner light up.
+      emissiveBoost = 0.22;
       break;
     case 'glass':
       base.roughness = 0.1;

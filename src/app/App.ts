@@ -23,11 +23,22 @@ const GALLERY_SET = import.meta.env.DEV
   ? new URLSearchParams(location.search).get('gallery')
   : null;
 
-type ViewName = 'hero' | 'plan' | 'side' | 'port' | 'rear' | 'front' | 'rear34' | 'under';
+type ViewName =
+  | 'hero'
+  | 'hero34'
+  | 'plan'
+  | 'side'
+  | 'port'
+  | 'rear'
+  | 'front'
+  | 'rear34'
+  | 'under';
 
 /** Fixed inspection directions, so a screenshot is reproducible. */
 const VIEW_DIRS: Record<ViewName, [number, number, number]> = {
   hero: [0.52, 0.3, 1],
+  // Closer to level than the hero shot, which is roughly what a visitor sees.
+  hero34: [0.78, 0.34, 0.86],
   plan: [0, 1, 0],
   side: [1, 0.06, 0],
   port: [-1, 0.06, 0],

@@ -59,7 +59,7 @@ export const MIRAGE2000: AircraftConfig = {
     hud: '#7cf0c4',
     metal: '#949aa0',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     accent: '#002395',
   },
   geometry: {
@@ -159,7 +159,7 @@ export const MIRAGE2000: AircraftConfig = {
     markings: {
       radius: 0.68,
       wing: { x: 2.3, chord: 0.3 },
-      fuselageZ: 6.6,
+      fuselageZ: 4,
     },
   },
 };

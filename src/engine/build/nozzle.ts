@@ -111,13 +111,26 @@ function buildRoundNozzle(
     }
   }
 
-  // Glowing throat just inside the exit plane.
+  // Turbine face, set well back down the pipe rather than flush with the
+  // lip. At rest the exhaust should read as a dark recess with a hint of
+  // warmth deep inside; thrust mode is what lights it up, by raising the
+  // emissive channel for this part.
+  const deep = Math.min(length * 0.72, Math.max(2.5, radius * 1.6));
   fillLoftZ(
     grid,
-    zExit + toothDepth,
-    zExit + toothDepth + 1,
-    () => ({ cx, cy, w: radius * 0.72, h: radius * 0.72, e: 2 }),
+    zExit + toothDepth + deep,
+    zExit + toothDepth + deep + 1.2,
+    () => ({ cx, cy, w: radius * 0.68, h: radius * 0.68, e: 2 }),
     { pal: exhaust, part },
+  );
+  // Pipe wall between the lip and the turbine face, so the recess has depth
+  // instead of showing bare fuselage.
+  fillLoftZ(
+    grid,
+    zExit,
+    zExit + toothDepth + deep,
+    () => ({ cx, cy, w: radius * 0.74, h: radius * 0.74, e: 2 }),
+    { pal: ctx.pal.shade('nozzle', 0.55), part, shell: 0.78, mode: 'fill-empty' },
   );
 }
 
@@ -181,11 +194,13 @@ function build2DNozzle(
     }
   }
 
-  const shiftExit = -deflect * length;
+  // Recessed, as on the round nozzle: dark pipe, turbine face set back.
+  const deep = Math.min(length * 0.7, Math.max(2.5, radius * 1.5));
+  const shiftExit = -deflect * (length - deep);
   fillBox(
     grid,
-    [cx - halfW * 0.72, cy + shiftExit - halfH * 0.6, zExit + toothDepth],
-    [cx + halfW * 0.72, cy + shiftExit + halfH * 0.6, zExit + toothDepth + 1],
+    [cx - halfW * 0.7, cy + shiftExit - halfH * 0.58, zExit + toothDepth + deep],
+    [cx + halfW * 0.7, cy + shiftExit + halfH * 0.58, zExit + toothDepth + deep + 1.2],
     { pal: exhaust, part },
   );
 }

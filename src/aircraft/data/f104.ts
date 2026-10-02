@@ -59,7 +59,7 @@ export const F104: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#9aa0a6',
     nozzle: '#6e6a66',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     store: '#9aa1a8',
     accent: '#b22234',
   },
@@ -183,7 +183,7 @@ export const F104: AircraftConfig = {
     markings: {
       radius: 0.62,
       wing: { x: 1.9, chord: 0.45 },
-      fuselageZ: 9.6,
+      fuselageZ: 12.6,
     },
   },
 };

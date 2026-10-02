@@ -60,7 +60,7 @@ export const F4: AircraftConfig = {
     hud: '#ffd36b',
     metal: '#949aa0',
     nozzle: '#6c6864',
-    exhaust: '#ff8a3c',
+    exhaust: '#6b3417',
     store: '#6f7a84',
     pylon: '#59636c',
     accent: '#b22234',
@@ -177,7 +177,7 @@ export const F4: AircraftConfig = {
     markings: {
       radius: 0.74,
       wing: { x: 2.8, chord: 0.4 },
-      fuselageZ: 12.6,
+      fuselageZ: 14.4,
     },
   },
 };
