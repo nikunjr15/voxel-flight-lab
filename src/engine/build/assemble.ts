@@ -14,6 +14,7 @@ import { buildIntake, DuctPath } from './intake';
 import { buildEngine, buildNozzle } from './nozzle';
 import { buildBays, buildStores } from './stores';
 import { buildNacelles } from './nacelle';
+import { buildFairings } from './fairing';
 import { buildBlocks } from './blocks';
 import { buildMarkings } from './markings';
 import { buildLettering } from './glyphs';
@@ -121,6 +122,8 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
     buildFin(ctx, g.ventral, 'ventral-r', { side: 1, down: true });
     buildFin(ctx, g.ventral, 'ventral-l', { side: -1, down: true });
   }
+
+  if (g.fairings) buildFairings(ctx, g.fairings);
 
   const ductTo = g.nozzle?.engineFromZ ?? length * 0.7;
   const paths: DuctPath[] = [];

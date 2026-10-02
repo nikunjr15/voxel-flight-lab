@@ -19,6 +19,9 @@ export const GALLERY_SETS: Record<string, string[]> = {
   '2b': ['me-262', 'f-86', 'mig-15', 'mig-21', 'f-104', 'mirage-3', 'f-16'],
   era1: ['me-262', 'f-86', 'mig-15'],
   era2: ['mig-21', 'f-104', 'mirage-3'],
+  '2c': ['f-4', 'mig-23', 'ajeet', 'f-15', 'su-27', 'mig-29', 'mirage-2000', 'f-16'],
+  era3: ['f-4', 'mig-23', 'ajeet'],
+  era4: ['f-15', 'f-16', 'su-27', 'mig-29', 'mirage-2000'],
   all: AIRCRAFT.map((a) => a.id),
 };
 

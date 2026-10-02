@@ -341,6 +341,7 @@ export interface AircraftGeometry {
   ventral?: SurfaceParams;
   intakes: IntakeParams[];
   nacelles?: NacelleParams[];
+  fairings?: FairingParams[];
   /** Absent on aircraft whose thrust is entirely in podded nacelles. */
   nozzle?: NozzleParams;
   canopy: CanopyParams;
@@ -361,4 +362,27 @@ export interface AircraftConfig {
   copy: AircraftCopy;
   palette: Partial<Record<PaletteSlot, string>>;
   geometry: AircraftGeometry;
+}
+
+/**
+ * A lofted body blended onto the airframe: engine nacelle tunnels, intake
+ * trunks, conformal tanks, spine fairings. Cheaper to express as data than a
+ * builder per aircraft, and it covers every twin-nacelle layout in the roster.
+ */
+export interface FairingParams {
+  /** Centreline of the fairing: x from the aircraft centreline, y above the waterline. */
+  at: [number, number];
+  /** Metres aft of the nose. */
+  fromZ: number;
+  toZ: number;
+  /** Half-width and half-height at the front and at the back. */
+  front: [number, number];
+  back: [number, number];
+  mirror?: boolean;
+  part?: PartId;
+  palette?: PaletteSlot;
+  /** 2 is elliptical, higher is boxier. */
+  exponent?: number;
+  /** Lets the fuselage win where they overlap. Defaults to true. */
+  under?: boolean;
 }
