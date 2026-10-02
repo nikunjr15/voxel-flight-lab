@@ -333,6 +333,11 @@ export interface MarkingParams {
    */
   wing?: { x: number; z?: number; chord?: number };
   radius: number;
+  /**
+   * Fin flash. On by default for the air forces that carry one -- the colours
+   * come from the country, not from here -- so this only exists to turn it off
+   * for a scheme that would not have had it.
+   */
   tailFlash?: boolean;
 }
 

@@ -4,6 +4,14 @@ export interface CountryMarking {
   style: MarkingStyle;
   /** Outer to inner for roundels; disc then device for stars and crosses. */
   colors: string[];
+  /**
+   * Vertical tail flash, listed leading edge first. Only for air forces that
+   * actually carry one: the USAF uses tail codes instead, and Soviet, Russian
+   * and Chinese fins carry the star rather than a band. Omitted for Germany,
+   * because a modern black-red-gold flash would be wrong on a Me 262 and the
+   * wartime fin marking is one this project will not draw.
+   */
+  finFlash?: string[];
 }
 
 export interface Country {
@@ -48,21 +56,33 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     code: 'FR',
     name: 'France',
     bar: ['#002395', '#f2f2f2', '#ed2939'],
-    marking: { style: 'roundel', colors: ['#002395', '#f2f2f2', '#ed2939'] },
+    marking: {
+      style: 'roundel',
+      colors: ['#002395', '#f2f2f2', '#ed2939'],
+      finFlash: ['#002395', '#f2f2f2', '#ed2939'],
+    },
     accent: '#002395',
   },
   UK: {
     code: 'UK',
     name: 'United Kingdom',
     bar: ['#012169', '#f2f2f2', '#c8102e'],
-    marking: { style: 'roundel', colors: ['#012169', '#f2f2f2', '#c8102e'] },
+    marking: {
+      style: 'roundel',
+      colors: ['#012169', '#f2f2f2', '#c8102e'],
+      finFlash: ['#c8102e', '#f2f2f2', '#012169'],
+    },
     accent: '#012169',
   },
   IN: {
     code: 'IN',
     name: 'India',
     bar: ['#ff9933', '#f2f2f2', '#138808'],
-    marking: { style: 'roundel', colors: ['#ff9933', '#f2f2f2', '#138808'] },
+    marking: {
+      style: 'roundel',
+      colors: ['#ff9933', '#f2f2f2', '#138808'],
+      finFlash: ['#ff9933', '#f2f2f2', '#138808'],
+    },
     accent: '#ff9933',
   },
   SE: {

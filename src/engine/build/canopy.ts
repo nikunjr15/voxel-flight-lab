@@ -23,6 +23,7 @@ export function buildCanopy(ctx: BuildCtx, p: CanopyParams): void {
   const tub = ctx.pal.idx('cockpit');
   const seatPal = ctx.pal.idx('seat');
   const hudPal = ctx.pal.idx('hud');
+  const hudDim = ctx.pal.idx('hudDim');
 
   // t = 0 at the aft fairing, 1 at the windscreen. Width and height need
   // separate curves: one shared curve gives a flat-topped box, not a bubble.
@@ -108,6 +109,7 @@ export function buildCanopy(ctx: BuildCtx, p: CanopyParams): void {
       tier: p.tier,
       tub,
       hudPal,
+      hudDim,
     });
   }
 
@@ -146,6 +148,7 @@ interface PanelArgs {
   tier: CanopyParams['tier'];
   tub: number;
   hudPal: number;
+  hudDim: number;
 }
 
 /**
@@ -173,12 +176,13 @@ function buildInstrumentPanel(ctx: BuildCtx, a: PanelArgs): void {
         { pal: a.hudPal, part: ctx.p('hud') },
       );
     }
-    // Reflector gunsight.
+    // Reflector gunsight. Dim for the same reason as the combiner: it stands
+    // above the coaming, so the lit colour would show from outside.
     fillBox(
       grid,
       [x0 - 1, a.yBase + 1, a.zPanel - 1.4],
-      [x0 + 1, a.yBase + 3, a.zPanel - 0.9],
-      { pal: a.hudPal, part: ctx.p('hud') },
+      [x0 + 1, a.yBase + 2.6, a.zPanel - 0.9],
+      { pal: a.hudDim, part: ctx.p('hud') },
     );
     return;
   }
@@ -201,15 +205,19 @@ function buildInstrumentPanel(ctx: BuildCtx, a: PanelArgs): void {
     );
   }
 
-  // Head-up display: combiner glass on a short pedestal.
-  fillBox(grid, [x0 - 0.6, a.yBase + 0.6, a.zPanel - 1.6], [x0 + 0.6, a.yBase + 1.6, a.zPanel - 1], {
+  // Head-up display: a combiner pane on a short pedestal. Kept low and thin:
+  // at the old height it stood well clear of the coaming, and in the full HUD
+  // colour it read from outside as a saturated green cube on the nose. The
+  // pane carries the dim slot, so cockpit mode -- which raises emissive on the
+  // hud part -- is the only place the symbology colour actually shows.
+  fillBox(grid, [x0 - 0.6, a.yBase + 0.6, a.zPanel - 1.5], [x0 + 0.6, a.yBase + 1.4, a.zPanel - 1], {
     pal: ctx.pal.idx('frame'),
     part: ctx.p('hud'),
   });
   fillBox(
     grid,
-    [x0 - a.hw * 0.34, a.yBase + 1.6, a.zPanel - 1.8],
-    [x0 + a.hw * 0.34, a.yBase + 4.2, a.zPanel - 1.2],
-    { pal: a.hudPal, part: ctx.p('hud') },
+    [x0 - a.hw * 0.28, a.yBase + 1.4, a.zPanel - 1.7],
+    [x0 + a.hw * 0.28, a.yBase + 3.0, a.zPanel - 1.3],
+    { pal: a.hudDim, part: ctx.p('hud') },
   );
 }

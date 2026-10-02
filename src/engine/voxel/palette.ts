@@ -20,6 +20,7 @@ export const PALETTE_SLOTS = [
   'cockpit',
   'seat',
   'hud',
+  'hudDim',
   'metal',
   'nozzle',
   'exhaust',
@@ -44,6 +45,7 @@ const SLOT_KIND: Record<PaletteSlot, MaterialKind> = {
   cockpit: 'opaque',
   seat: 'opaque',
   hud: 'emissive',
+  hudDim: 'emissive',
   metal: 'metal',
   nozzle: 'metal',
   exhaust: 'emissive',
@@ -78,6 +80,18 @@ export class Palette {
       this.bySlot.set(slot, this.add(hex, SLOT_KIND[slot]));
     }
     if (!this.bySlot.has('skin')) this.bySlot.set('skin', this.add('#9aa4ad', 'opaque'));
+    // A HUD combiner is a sheet of glass, not a lamp. At rest it should read
+    // as a dark pane that happens to catch the cockpit light; the bright
+    // symbology colour belongs to cockpit mode, which lifts the part's
+    // emissive term. Derived rather than asked for, so no config carries both.
+    if (!this.bySlot.has('hudDim')) {
+      const [r, g, b] = hexToRgb(slots.hud ?? '#7cf0c4');
+      const dim = (c: number): string =>
+        Math.round(c * 0.2 * 255)
+          .toString(16)
+          .padStart(2, '0');
+      this.bySlot.set('hudDim', this.add(`#${dim(r)}${dim(g)}${dim(b)}`, 'emissive'));
+    }
   }
 
   add(hex: string, kind: MaterialKind): number {

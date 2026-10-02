@@ -44,7 +44,23 @@ function maskFor(
       return (u, v) => (Math.hypot(u, v) <= radius ? pal[0] : 0);
 
     case 'roundel': {
-      const bands = pal.length;
+      // A ring needs roughly two voxels of width to survive rasterising. A
+      // three-band roundel on a fuselage side is often four or five voxels
+      // across in total, and the middle band then breaks up: the Indian
+      // roundel came out as a green cross on an orange blob. Drop interior
+      // colours rather than the marking, always keeping the outermost and
+      // innermost so the nation still reads.
+      const fits = Math.max(1, Math.min(pal.length, Math.floor(radius / 1.8)));
+      const ringPal =
+        fits === pal.length
+          ? pal
+          : fits === 1
+            ? [pal[0]]
+            : Array.from(
+                { length: fits },
+                (_, i) => pal[Math.round((i * (pal.length - 1)) / (fits - 1))],
+              );
+      const bands = ringPal.length;
       return (u, v) => {
         const d = Math.hypot(u, v);
         if (d > radius) return 0;
@@ -53,7 +69,7 @@ function maskFor(
         // in the centre and turned every roundel in the roster inside out:
         // French roundels came out blue-centred, Indian ones green-centred.
         const ring = Math.min(bands - 1, Math.floor((d / radius) * bands));
-        return pal[bands - 1 - ring];
+        return ringPal[bands - 1 - ring];
       };
     }
 
@@ -137,6 +153,75 @@ const BODY_PARTS = new Set(
     (id) => PART_INDEX[id],
   ),
 );
+const FIN_PARTS = new Set(
+  (['tail-v', 'tail-v-l', 'tail-v-r'] as PartId[]).map((id) => PART_INDEX[id]),
+);
+
+/** Fraction of the local fin chord the flash covers, measured from the trailing edge. */
+const FLASH_CHORD = 0.42;
+/** Fraction of the fin's height skipped at the root, where the fairing widens. */
+const FLASH_ROOT_SKIP = 0.28;
+
+/**
+ * Paints a fin flash: vertical colour bands over the aft part of every
+ * vertical tail, leading-edge colour first.
+ *
+ * The chord is measured off the grid one row at a time rather than recomputed
+ * from the planform, so sweep, a clipped tip and a root fairing all come out
+ * with bands that follow the real trailing edge, and a twin-finned airframe
+ * needs no special case. Fins are only two or three voxels thick, so every
+ * voxel in the station is painted; surface extraction discards whatever ends
+ * up buried.
+ */
+function buildFinFlash(ctx: BuildCtx, colors: string[]): void {
+  if (colors.length === 0) return;
+  const { grid } = ctx;
+  const pal = colors.map((c) => ctx.pal.add(c, 'opaque'));
+  const part = ctx.p('marking');
+  const isFin = (x: number, y: number, z: number): boolean =>
+    grid.has(x, y, z) && FIN_PARTS.has(grid.partAt(x, y, z));
+
+  // Pass 1: how high the fins stand, so the root fairing can be skipped.
+  let yLow = -1;
+  let yHigh = -1;
+  for (let y = 0; y < grid.sy; y++) {
+    let found = false;
+    for (let z = 0; z < grid.sz && !found; z++) {
+      for (let x = 0; x < grid.sx && !found; x++) found = isFin(x, y, z);
+    }
+    if (!found) continue;
+    if (yLow < 0) yLow = y;
+    yHigh = y;
+  }
+  if (yLow < 0 || yHigh - yLow < 3) return;
+  const yStart = Math.round(yLow + (yHigh - yLow) * FLASH_ROOT_SKIP);
+
+  // Pass 2: band each row across its own chord. Grid +Z points at the nose, so
+  // the trailing edge is the low-Z end and the colours run down from zMax.
+  for (let y = yStart; y <= yHigh; y++) {
+    let zMin = -1;
+    let zMax = -1;
+    for (let z = 0; z < grid.sz; z++) {
+      let hit = false;
+      for (let x = 0; x < grid.sx && !hit; x++) hit = isFin(x, y, z);
+      if (!hit) continue;
+      if (zMin < 0) zMin = z;
+      zMax = z;
+    }
+    if (zMin < 0) continue;
+    const chord = zMax - zMin + 1;
+    const flash = chord * FLASH_CHORD;
+    // Narrower than one voxel per band and the flash is noise, not a marking.
+    if (flash < colors.length) continue;
+    for (let z = zMin; z < zMin + flash; z++) {
+      const fromLe = (zMin + flash - 1 - z) / flash;
+      const band = Math.min(colors.length - 1, Math.floor(fromLe * colors.length));
+      for (let x = 0; x < grid.sx; x++) {
+        if (isFin(x, y, z)) grid.paint(x, y, z, pal[band], part);
+      }
+    }
+  }
+}
 
 export function buildMarkings(
   ctx: BuildCtx,
@@ -163,16 +248,19 @@ export function buildMarkings(
   }
 
   if (p.fuselageZ !== undefined) {
-    // No bars on the body. A fuselage marking is painted onto the outermost
-    // voxel of each row, so the mask is wrapped around a curved surface; bars
-    // run far enough round the curve to break into fragments. The disc alone
-    // survives the projection. Kept small for the same reason.
-    const bodyRadius = radius * 0.6;
-    const bodyMask = maskFor(ctx, { ...marking, style }, bodyRadius, false);
+    // Smaller than the wing insignia, as on the real aircraft. It used to be
+    // smaller still, at 0.6, to limit how far a stencil projected straight
+    // down the x axis smeared as it wrapped round the flank; paintSide now
+    // walks the section in arc length, so the size can go back to something
+    // closer to scale and the extra voxels keep the bands apart.
+    const bodyRadius = radius * 0.8;
+    const bodyMask = maskFor(ctx, { ...marking, style }, bodyRadius);
     const cz = ctx.gzAft(p.fuselageZ);
     const cy = ctx.gy(0.1);
     for (const side of [1, -1] as const) {
       paintSide(ctx.grid, side, cy, cz, bodyRadius * 2.3, bodyMask, part, (q) => BODY_PARTS.has(q));
     }
   }
+
+  if (p.tailFlash !== false && marking.finFlash) buildFinFlash(ctx, marking.finFlash);
 }

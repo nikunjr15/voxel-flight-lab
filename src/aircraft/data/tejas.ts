@@ -88,8 +88,10 @@ export const TEJAS: AircraftConfig = {
       rootChord: 6.6,
       tipChord: 0.4,
       sweep: 62,
-      // The crank: sweep eases from 62 to 42 degrees half way out.
-      kink: { at: 0.5, chord: 2.9, sweep: 42 },
+      // The crank: sweep eases from 62 to 42 degrees. Placed slightly inboard
+      // of half span so the outer panel is long enough for the break to read in
+      // plan view; the published sweeps are kept as they are.
+      kink: { at: 0.45, chord: 3.1, sweep: 42 },
       dihedral: 0,
       thickness: 0.26,
       atZ: 4.5,
