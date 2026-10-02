@@ -394,3 +394,13 @@
 .chrome[hidden] {
   display: none;
 }
+
+/* Gallery rows pack many captions side by side, so they run narrower. */
+.rig-labels--gallery .rig-label {
+  width: 124px;
+}
+
+.rig-labels--gallery .rig-label span {
+  font-size: 10px;
+  line-height: 1.3;
+}

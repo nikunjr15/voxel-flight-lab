@@ -28,7 +28,7 @@ type ViewName = 'hero' | 'plan' | 'side' | 'port' | 'rear' | 'front' | 'rear34' 
 /** Fixed inspection directions, so a screenshot is reproducible. */
 const VIEW_DIRS: Record<ViewName, [number, number, number]> = {
   hero: [0.52, 0.3, 1],
-  plan: [0, 1, 0.0001],
+  plan: [0, 1, 0],
   side: [1, 0.06, 0],
   port: [-1, 0.06, 0],
   front: [0.12, 0.1, 1],
@@ -36,6 +36,51 @@ const VIEW_DIRS: Record<ViewName, [number, number, number]> = {
   rear34: [0.65, 0.4, -1],
   under: [0.15, -1, 0.25],
 };
+
+/**
+ * Up vector per view. Straight up or down leaves the roll undefined against
+ * the default +Y, so those two name it explicitly: noses point to the top of
+ * the frame.
+ */
+const VIEW_UPS: Partial<Record<ViewName, [number, number, number]>> = {
+  plan: [0, 0, -1],
+  under: [0, 0, -1],
+};
+
+/**
+ * Distance needed to fit a box of `size` seen from `dir`. The eight corners
+ * are projected onto the camera's own right and up axes, which is exact for
+ * any angle -- a bounding sphere is wildly conservative for a long thin row,
+ * and axis-aligned extents only work for a dead-on view.
+ */
+function fitDistance(
+  size: Vector3,
+  dir: Vector3,
+  up: [number, number, number] | undefined,
+  hFov: number,
+  vFov: number,
+): number {
+  const forward = dir.clone().normalize();
+  const upVec = new Vector3(...(up ?? [0, 1, 0]));
+  let right = new Vector3().crossVectors(upVec, forward);
+  if (right.lengthSq() < 1e-6) right = new Vector3(1, 0, 0);
+  right.normalize();
+  const screenUp = new Vector3().crossVectors(forward, right).normalize();
+
+  let halfW = 0;
+  let halfH = 0;
+  const h = size.clone().multiplyScalar(0.5);
+  for (let i = 0; i < 8; i++) {
+    const corner = new Vector3(
+      i & 1 ? h.x : -h.x,
+      i & 2 ? h.y : -h.y,
+      i & 4 ? h.z : -h.z,
+    );
+    halfW = Math.max(halfW, Math.abs(corner.dot(right)));
+    halfH = Math.max(halfH, Math.abs(corner.dot(screenUp)));
+  }
+  return Math.max(halfW / Math.tan(hFov / 2), halfH / Math.tan(vFov / 2));
+}
 
 /** Direction the hero shot looks from: three-quarter, slightly above. */
 const HERO_DIR = new Vector3(0.52, 0.3, 1).normalize();
@@ -109,29 +154,46 @@ export class App {
     this.pivot.add(gallery.group);
     this.idle = false;
     this.pivot.rotation.set(0, 0, 0);
+    this.rig.setParallax(false);
     document.querySelector('.chrome')?.setAttribute('hidden', '');
 
-    await gallery.load(ids, Number(params.get('density')) || 1);
+    await gallery.load(
+      ids,
+      Number(params.get('density')) || 1,
+      params.get('shared') !== '0',
+    );
     console.info(`[gallery ${set}]\n${gallery.table()}`);
 
     const view = (params.get('view') ?? 'plan') as ViewName;
     const b = gallery.bounds();
     const size = b.getSize(new Vector3());
     const centre = b.getCenter(new Vector3());
-    const dir = new Vector3(...(VIEW_DIRS[view] ?? VIEW_DIRS.plan)).normalize();
-    const fov = 34;
-    const vFov = (fov * Math.PI) / 180;
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (this.stage.camera.aspect || 1));
-    // Fit the row by its width and depth separately: a plan view of a long row
-    // is limited by horizontal field of view, a side view by vertical.
-    const dist =
-      Math.max(size.x / (2 * Math.tan(hFov / 2)), size.z / (2 * Math.tan(vFov / 2))) * 1.18;
-    const p = dir.multiplyScalar(dist).add(centre);
-    this.rig.set({
-      position: [p.x, p.y, p.z],
-      target: [centre.x, centre.y, centre.z],
-      fov,
-    });
+    const dir = new Vector3(...(VIEW_DIRS[view] ?? VIEW_DIRS.plan));
+
+    // Re-fit on every resize: the pane can change aspect after the build
+    // finishes, and a row fitted to the old aspect ends up badly framed.
+    // Captions go below the model on screen, which is +Z in a plan view and
+    // -Y in anything oblique.
+    this.labelOffset =
+      view === 'plan' ? new Vector3(0, 0, size.z * 0.5 + 1.6) : new Vector3(0, -3.6, 0);
+
+    this.refit = () => {
+      const fov = 34;
+      const vFov = (fov * Math.PI) / 180;
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (this.stage.camera.aspect || 1));
+      // Oblique views need more slack than a dead-on one: perspective makes the
+      // near end of a long row larger than the centre-based fit predicts.
+      const slack = view === 'plan' ? 1.06 : 1.22;
+      const dist = fitDistance(size, dir, VIEW_UPS[view], hFov, vFov) * slack;
+      const p = dir.clone().normalize().multiplyScalar(dist).add(centre);
+      this.rig.set({
+        position: [p.x, p.y, p.z],
+        target: [centre.x, centre.y, centre.z],
+        fov,
+        up: VIEW_UPS[view],
+      });
+    };
+    this.refit();
   }
 
   /**
@@ -146,6 +208,7 @@ export class App {
     this.pivot.add(bench.group);
     this.idle = false;
     this.pivot.rotation.set(0, 0, 0);
+    this.rig.setParallax(false);
     document.querySelector('.chrome')?.setAttribute('hidden', '');
 
     const only = params.get('only');
@@ -167,6 +230,7 @@ export class App {
           ];
           preset.target = [at[0], at[1], at[2]];
         }
+        preset.up = VIEW_UPS[view];
         this.rig.set(preset);
       }
       return;
@@ -253,6 +317,10 @@ export class App {
   }
 
   private reframeTimer = 0;
+  /** Set by the rig and gallery views so a resize re-runs their own fit. */
+  private refit: (() => void) | null = null;
+  /** World-space offset from a model to where its caption sits. */
+  private labelOffset = new Vector3(0, -3.4, 0);
   private loadToken = 0;
 
   private readonly resize = (): void => {
@@ -261,7 +329,15 @@ export class App {
     // the camera on every frame.
     window.clearTimeout(this.reframeTimer);
     this.reframeTimer = window.setTimeout(() => {
-      if (RIG_MODE || this.rig.orbitEnabled) return;
+      if (this.rig.orbitEnabled) return;
+      // The rig and the gallery frame their own content. Re-run whichever fit
+      // is in force rather than falling back to the hero shot, which would
+      // override their camera and reset the up vector.
+      if (this.refit) {
+        this.refit();
+        return;
+      }
+      if (RIG_MODE) return;
       this.rig.apply(this.heroPreset(), 0.6);
     }, 160);
   };
@@ -409,7 +485,7 @@ export class App {
           y: (-v.y * 0.5 + 0.5) * height,
           visible: v.z < 1,
         };
-      });
+      }, this.labelOffset);
     }
 
     this.stats.tick(now);

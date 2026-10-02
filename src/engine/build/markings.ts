@@ -49,10 +49,15 @@ function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
 
     case 'star': {
       const star = starPolygon(radius * 0.95);
+      const inner = starPolygon(radius * 0.72);
       const outline = pal[1] ?? pal[0];
+      // Below roughly eight voxels across, the outline ring eats the whole
+      // star and the marking reads as a coloured blob. Drop it and keep the
+      // solid shape, the same rule the star-and-bar uses for its bars.
+      const outlined = radius >= 8;
       return (u, v) => {
         if (!pointInPolygon(star, u, v)) return 0;
-        const inner = starPolygon(radius * 0.72);
+        if (!outlined) return pal[0];
         return pointInPolygon(inner, u, v) ? pal[0] : outline;
       };
     }

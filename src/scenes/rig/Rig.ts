@@ -91,13 +91,15 @@ export class Rig {
   }
 
   /** Projects each plinth to screen space so the caption tracks the model. */
-  updateLabels(project: (p: Vector3) => { x: number; y: number; visible: boolean }): void {
+  updateLabels(
+    project: (p: Vector3) => { x: number; y: number; visible: boolean },
+    offset: Vector3 = new Vector3(0, -3.4, 0),
+  ): void {
     const children = this.labelLayer.children;
     for (let i = 0; i < this.placed.length; i++) {
       const el = children[i] as HTMLElement | undefined;
       if (!el) continue;
-      const p = this.placed[i].centre.clone();
-      p.y -= 3.4;
+      const p = this.placed[i].centre.clone().add(offset);
       const s = project(p);
       el.style.transform = `translate(-50%, 0) translate(${s.x}px, ${s.y}px)`;
       el.style.opacity = s.visible ? '1' : '0';

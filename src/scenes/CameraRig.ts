@@ -6,6 +6,12 @@ export interface CameraPreset {
   position: [number, number, number];
   target: [number, number, number];
   fov?: number;
+  /**
+   * Overrides the camera's up vector. Needed for a straight-down plan view:
+   * with the default +Y up parallel to the view direction, the roll is
+   * undefined and the scene lands at an arbitrary angle.
+   */
+  up?: [number, number, number];
 }
 
 export interface RigOptions {
@@ -29,6 +35,7 @@ export class CameraRig {
   private readonly parallaxCurrent = new Vector3();
   private parallaxStrength = 0.9;
   private orbit = false;
+  private parallaxOn = true;
   private reducedMotion: boolean;
   private tween: gsap.core.Tween | null = null;
 
@@ -61,6 +68,12 @@ export class CameraRig {
     }
   }
 
+  /** Review views frame content exactly; parallax would nudge it off centre. */
+  setParallax(enabled: boolean): void {
+    this.parallaxOn = enabled;
+    if (!enabled) this.parallaxTarget.set(0, 0, 0);
+  }
+
   setReducedMotion(v: boolean): void {
     this.reducedMotion = v;
     if (v) this.parallaxStrength = 0;
@@ -69,6 +82,7 @@ export class CameraRig {
   /** Glides to a preset. Expo easing so it settles rather than stops. */
   apply(preset: CameraPreset, duration = 1.5): void {
     this.tween?.kill();
+    this.camera.up.set(...(preset.up ?? [0, 1, 0]));
     const [tx, ty, tz] = preset.target;
     const [px, py, pz] = preset.position;
     const d = this.reducedMotion ? 0.001 : duration;
@@ -112,15 +126,17 @@ export class CameraRig {
     this.camera.position.copy(this.base);
     this.target.set(...preset.target);
     this.controls.target.copy(this.target);
+    this.camera.up.set(...(preset.up ?? [0, 1, 0]));
     if (preset.fov) {
       this.camera.fov = preset.fov;
       this.camera.updateProjectionMatrix();
     }
+    this.camera.lookAt(this.target);
   }
 
   /** Pointer position in -1..1. Ignored while orbiting or in reduced motion. */
   setPointer(x: number, y: number): void {
-    if (this.orbit || this.reducedMotion) {
+    if (this.orbit || this.reducedMotion || !this.parallaxOn) {
       this.parallaxTarget.set(0, 0, 0);
       return;
     }

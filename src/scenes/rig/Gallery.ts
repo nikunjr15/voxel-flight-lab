@@ -2,6 +2,7 @@ import { Box3, Group, Vector3 } from 'three';
 import { buildClient } from '../../engine/build/client';
 import { VoxelModel } from '../../engine/voxel/VoxelModel';
 import { AIRCRAFT } from '../../aircraft';
+import { TARGET_PLANFORM_VOXELS } from '../../engine/build/assemble';
 import type { AircraftConfig } from '../../aircraft/types';
 
 interface Placed {
@@ -29,23 +30,41 @@ export const GALLERY_SETS: Record<string, string[]> = {
 export class Gallery {
   readonly group = new Group();
   readonly placed: Placed[] = [];
+  /** Shared world block size in metres; 0 when each jet uses its own grid. */
+  voxelSize = 0;
   private readonly labelLayer: HTMLElement;
 
   constructor(parent: HTMLElement) {
     this.group.name = 'gallery';
     this.labelLayer = document.createElement('div');
-    this.labelLayer.className = 'rig-labels';
+    this.labelLayer.className = 'rig-labels rig-labels--gallery';
     parent.appendChild(this.labelLayer);
   }
 
-  async load(ids: string[], density = 1): Promise<void> {
+  /**
+   * One block size for the whole row. Derived from the largest airframe in the
+   * set under the normal planform rule, so nothing in the row ends up finer
+   * than that aircraft would have been on its own -- and no jet gets quantised
+   * to a different grid, which is what made relative scale read wrong.
+   */
+  static sharedVoxelSize(configs: AircraftConfig[]): number {
+    const largest = Math.max(
+      ...configs.map((c) => Math.sqrt(c.geometry.fuselage.length * c.geometry.bbox.span)),
+    );
+    return largest / TARGET_PLANFORM_VOXELS;
+  }
+
+  async load(ids: string[], density = 1, shared = true): Promise<void> {
     const configs = ids
       .map((id) => AIRCRAFT.find((a) => a.id === id))
       .filter((a): a is AircraftConfig => Boolean(a));
 
+    const voxelSize = shared ? Gallery.sharedVoxelSize(configs) : undefined;
+    this.voxelSize = voxelSize ?? 0;
+
     let cursor = 0;
     for (const config of configs) {
-      const data = await buildClient.build(config, { density });
+      const data = await buildClient.build(config, { density, voxelSize });
       const model = new VoxelModel(config.id, data);
       const centre = model.center;
       model.group.position.set(-centre.x, -centre.y, -centre.z);
@@ -85,13 +104,20 @@ export class Gallery {
     this.labelLayer.appendChild(el);
   }
 
-  updateLabels(project: (p: Vector3) => { x: number; y: number; visible: boolean }): void {
+  /**
+   * `offset` is in world space because what counts as "below the model"
+   * depends on the view: -Y under a three-quarter shot, +Z under a plan view
+   * where -Y points straight at the camera and would move nothing.
+   */
+  updateLabels(
+    project: (p: Vector3) => { x: number; y: number; visible: boolean },
+    offset: Vector3 = new Vector3(0, -3.2, 0),
+  ): void {
     const children = this.labelLayer.children;
     for (let i = 0; i < this.placed.length; i++) {
       const el = children[i] as HTMLElement | undefined;
       if (!el) continue;
-      const p = this.placed[i].at.clone().add(this.group.position);
-      p.y -= 3.2;
+      const p = this.placed[i].at.clone().add(this.group.position).add(offset);
       const s = project(p);
       el.style.transform = `translate(-50%, 0) translate(${s.x}px, ${s.y}px)`;
       el.style.opacity = s.visible ? '1' : '0';
@@ -100,11 +126,14 @@ export class Gallery {
 
   /** Per-jet voxel table, printed to the console for the review notes. */
   table(): string {
+    const head = this.voxelSize
+      ? `shared block size ${(this.voxelSize * 100).toFixed(1)} cm`
+      : 'per-jet block size';
     const rows = this.placed.map(
       (p) =>
         `${p.config.exhibitNo} ${p.config.designation.padEnd(16)} ${String(p.voxels).padStart(6)} voxels  ${p.model.info.drawCalls} draws  ${p.buildMs.toFixed(0)} ms`,
     );
-    return rows.join('\n');
+    return [head, ...rows].join('\n');
   }
 
   bounds(): Box3 {

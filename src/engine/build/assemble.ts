@@ -25,13 +25,20 @@ import { buildLettering } from './glyphs';
  * that least need the detail. Using sqrt(length x span) keeps surface counts
  * within a narrow band across the whole roster.
  */
-const TARGET_PLANFORM_VOXELS = 104;
+export const TARGET_PLANFORM_VOXELS = 104;
 
 export interface AssembleOptions {
   /** 1.0 desktop, 0.65 mobile, 0.5 low power. */
   density?: number;
   /** Forces voxels nose to tail, overriding the planform rule. */
   targetLengthVoxels?: number;
+  /**
+   * Forces an exact world voxel size in metres, overriding both rules above.
+   * Any set of aircraft built with the same value shares a block size, so a
+   * gallery or a compare turntable shows honest relative scale instead of
+   * each airframe being quantised to its own grid.
+   */
+  voxelSize?: number;
   /** Overrides the wing sweep on variable-geometry aircraft, in degrees. */
   wingSweep?: number;
   /** Overrides bay door opening, 0 closed to 1 open. */
@@ -74,9 +81,11 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
   const g = config.geometry;
   const length = g.fuselage.length;
   const planform = Math.sqrt(length * Math.max(1, g.bbox.span));
-  const vpm = opts.targetLengthVoxels
-    ? (opts.targetLengthVoxels * density) / length
-    : (TARGET_PLANFORM_VOXELS * density) / planform;
+  const vpm = opts.voxelSize
+    ? density / opts.voxelSize
+    : opts.targetLengthVoxels
+      ? (opts.targetLengthVoxels * density) / length
+      : (TARGET_PLANFORM_VOXELS * density) / planform;
 
   const sx = Math.ceil(g.bbox.span * vpm) + 10;
   const sy = Math.ceil(g.bbox.height * vpm) + 14;
