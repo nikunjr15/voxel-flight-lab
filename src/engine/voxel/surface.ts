@@ -39,20 +39,55 @@ export interface ExtractOptions {
   partCount: number;
 }
 
-const NEIGHBOURS: Array<[number, number, number]> = [];
-for (let dz = -1; dz <= 1; dz++) {
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      if (dx === 0 && dy === 0 && dz === 0) continue;
-      NEIGHBOURS.push([dx, dy, dz]);
+/** The six face directions, each with the two axes that span its 3x3 patch. */
+const FACES: Array<{
+  d: [number, number, number];
+  u: [number, number, number];
+  v: [number, number, number];
+}> = [
+  { d: [1, 0, 0], u: [0, 1, 0], v: [0, 0, 1] },
+  { d: [-1, 0, 0], u: [0, 1, 0], v: [0, 0, 1] },
+  { d: [0, 1, 0], u: [1, 0, 0], v: [0, 0, 1] },
+  { d: [0, -1, 0], u: [1, 0, 0], v: [0, 0, 1] },
+  { d: [0, 0, 1], u: [1, 0, 0], v: [0, 1, 0] },
+  { d: [0, 0, -1], u: [1, 0, 0], v: [0, 1, 0] },
+];
+
+/**
+ * Occlusion for one voxel, measured only on the sides that are actually
+ * exposed.
+ *
+ * Counting the whole 26-neighbourhood looks reasonable but is wrong: most of
+ * those cells are *inside* the solid, so a thick wing section scored higher
+ * than a thin one and a flat painted surface came out blotchy, shaded by its
+ * own internal thickness. Here each open face looks at the 3x3 patch of the
+ * layer just outside it, so a surface in clear air gets nothing and only a
+ * real concavity -- a wing root, a voxel under a store or inside an intake --
+ * goes dark.
+ */
+function faceOcclusion(grid: VoxelGrid, x: number, y: number, z: number): number {
+  let worst = 0;
+  for (let f = 0; f < FACES.length; f++) {
+    const { d, u, v } = FACES[f];
+    if (grid.has(x + d[0], y + d[1], z + d[2])) continue;
+    let occ = 0;
+    for (let a = -1; a <= 1; a++) {
+      for (let b = -1; b <= 1; b++) {
+        const nx = x + d[0] + u[0] * a + v[0] * b;
+        const ny = y + d[1] + u[1] * a + v[1] * b;
+        const nz = z + d[2] + u[2] * a + v[2] * b;
+        if (grid.has(nx, ny, nz)) occ++;
+      }
     }
+    if (occ > worst) worst = occ;
   }
+  return worst / 9;
 }
 
 /**
- * Keeps only voxels with at least one exposed face and bakes an occlusion term
- * from the 26-neighbourhood. Dropping the interior typically removes 40-55% of
- * the instances for free, which is the difference between 20k and 10k draws.
+ * Keeps only voxels with at least one exposed face and bakes an occlusion
+ * term. Dropping the interior typically removes 40-55% of the instances for
+ * free, which is the difference between 20k and 10k draws.
  */
 export function extractSurface(grid: VoxelGrid, opts: ExtractOptions): SurfaceData {
   const { vpm, origin, colors, kinds, partCount } = opts;
@@ -164,12 +199,7 @@ export function extractSurface(grid: VoxelGrid, opts: ExtractOptions): SurfaceDa
       centroidAcc[part * 3 + 1] += my;
       centroidAcc[part * 3 + 2] += mz;
 
-      let occ = 0;
-      for (let t = 0; t < NEIGHBOURS.length; t++) {
-        const nb = NEIGHBOURS[t];
-        if (grid.has(x + nb[0], y + nb[1], z + nb[2])) occ++;
-      }
-      ao[j] = occ / NEIGHBOURS.length;
+      ao[j] = faceOcclusion(grid, x, y, z);
 
       // Dispersal cloud: push outward from the centroid onto a jittered shell so
       // the scatter reads as the airframe blowing apart, not as random noise.

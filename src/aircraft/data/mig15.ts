@@ -71,9 +71,9 @@ export const MIG15: AircraftConfig = {
       stations: [
         { t: 0, w: 0.52, h: 0.52, y: 0.02, e: 2 },
         { t: 0.07, w: 0.58, h: 0.58, y: 0.0, e: 2 },
-        { t: 0.2, w: 0.63, h: 0.64, y: -0.02, e: 2 },
-        { t: 0.36, w: 0.64, h: 0.68, y: -0.02, e: 2.1 },
-        { t: 0.54, w: 0.62, h: 0.66, y: 0.0, e: 2.1 },
+        { t: 0.2, w: 0.66, h: 0.67, y: -0.02, e: 2 },
+        { t: 0.36, w: 0.69, h: 0.72, y: -0.02, e: 2.1 },
+        { t: 0.54, w: 0.67, h: 0.7, y: 0.0, e: 2.1 },
         { t: 0.72, w: 0.56, h: 0.6, y: 0.02, e: 2.1 },
         { t: 0.88, w: 0.48, h: 0.52, y: 0.05, e: 2 },
         { t: 1, w: 0.42, h: 0.44, y: 0.07, e: 2 },
@@ -91,6 +91,10 @@ export const MIG15: AircraftConfig = {
       atZ: 3.75,
       atY: 0.04,
       tipThicknessRatio: 0.6,
+      fences: [
+        { at: 0.44, height: 0.15, chordFrom: 0.05, chordTo: 0.95 },
+        { at: 0.72, height: 0.13, chordFrom: 0.05, chordTo: 0.95 },
+      ],
     },
     tailH: {
       span: 3.65,
@@ -134,8 +138,8 @@ export const MIG15: AircraftConfig = {
       engineRadius: 0.38,
     },
     canopy: {
-      fromZ: 2.3,
-      toZ: 4.0,
+      fromZ: 1.95,
+      toZ: 3.6,
       baseY: 0.52,
       topY: 1.14,
       halfWidth: 0.4,

@@ -212,9 +212,14 @@ export interface VoxelMaterialOptions {
 export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): MeshStandardMaterial {
   const base: ConstructorParameters<typeof MeshStandardMaterial>[0] = {
     color: 0xffffff,
-    roughness: 0.78,
-    metalness: 0.04,
+    roughness: 0.86,
+    metalness: 0.03,
     flatShading: false,
+    // Painted skin should not mirror the room. At full strength the
+    // environment lobe sweeps a soft bright-to-dark gradient across a large
+    // flat panel like a wing, which reads as blotchy dirt rather than paint.
+    // Metal keeps its own, higher, value below.
+    envMapIntensity: 0.3,
   };
 
   let emissiveBoost = 0;
@@ -223,6 +228,7 @@ export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): M
     case 'metal':
       base.roughness = 0.3;
       base.metalness = 0.85;
+      base.envMapIntensity = 1;
       break;
     case 'emissive':
       base.roughness = 0.6;

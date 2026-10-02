@@ -54,10 +54,16 @@ export class Gallery {
     return largest / TARGET_PLANFORM_VOXELS;
   }
 
-  async load(ids: string[], density = 1, shared = true): Promise<void> {
-    const configs = ids
+  /**
+   * `reverse` lays the row out right to left in world space. A plan view
+   * looking down with the nose up necessarily mirrors the X axis, so this is
+   * what keeps the row reading left to right on screen in both views.
+   */
+  async load(ids: string[], density = 1, shared = true, reverse = false): Promise<void> {
+    const found = ids
       .map((id) => AIRCRAFT.find((a) => a.id === id))
       .filter((a): a is AircraftConfig => Boolean(a));
+    const configs = reverse ? [...found].reverse() : found;
 
     const voxelSize = shared ? Gallery.sharedVoxelSize(configs) : undefined;
     this.voxelSize = voxelSize ?? 0;
@@ -94,12 +100,15 @@ export class Gallery {
     this.group.position.x = -mid;
   }
 
+  /** Two fixed spec lines, so no caption wraps differently from its neighbour. */
   private addLabel(config: AircraftConfig, size: Vector3): void {
+    const { spec } = config;
     const el = document.createElement('div');
     el.className = 'rig-label';
     el.innerHTML =
       `<b>${config.exhibitNo} — ${config.designation}</b>` +
-      `<span>${config.spec.lengthM} m long · ${config.spec.spanM} m span · gen ${config.spec.generation}</span>`;
+      `<span>${spec.lengthM} m · ${spec.spanM} m span</span>` +
+      `<span>gen ${spec.generation} · ${spec.firstFlight}</span>`;
     el.dataset.span = size.x.toFixed(1);
     this.labelLayer.appendChild(el);
   }

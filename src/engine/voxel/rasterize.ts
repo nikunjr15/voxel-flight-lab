@@ -252,7 +252,11 @@ export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: F
       p.thickness * thicknessProfile(c) * lerp(1, tipRatio, s / Math.max(1e-6, p.span)),
       1.0,
     );
-    return Math.abs(ly) <= th * 0.5;
+    // Quantise to whole voxels. A fractional thickness puts the upper surface
+    // at non-integer heights, so neighbouring columns round differently and
+    // the top of the wing dithers between top faces and step faces -- which
+    // reads from above as soft dirty patches on what should be flat paint.
+    return Math.abs(ly) <= Math.round(th) * 0.5 + 1e-4;
   };
 
   fillFrame(grid, frame, [0, -halfT, zMin - 1], [localSpan, halfT, zMax + 1], inside, opts);

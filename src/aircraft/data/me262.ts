@@ -119,12 +119,14 @@ export const ME262: AircraftConfig = {
     intakes: [],
     nacelles: [
       {
-        at: [2.15, -0.52, 4.9],
-        length: 3.8,
-        radius: 0.43,
+        // Slung clear under the wing and well ahead of the local leading
+        // edge, which on the real aircraft is about 1.8 m of pod in front.
+        at: [2.15, -0.78, 4.55],
+        length: 4.0,
+        radius: 0.45,
         mirror: true,
-        pylon: 0.14,
-        exhaustRadius: 0.3,
+        pylon: 0.2,
+        exhaustRadius: 0.31,
       },
     ],
     canopy: {

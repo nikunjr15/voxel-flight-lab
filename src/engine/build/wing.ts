@@ -1,5 +1,12 @@
 import { clamp, DEG, V3 } from '../util/math';
-import { fillLoftZ, fillPlanform, makeFrame, Planform, planformStation } from '../voxel/rasterize';
+import {
+  fillBox,
+  fillLoftZ,
+  fillPlanform,
+  makeFrame,
+  Planform,
+  planformStation,
+} from '../voxel/rasterize';
 import type { PartId } from '../voxel/parts';
 import type { LerxParams, SurfaceParams } from '../../aircraft/types';
 import type { BuildCtx } from './ctx';
@@ -54,6 +61,7 @@ export function buildSurfacePair(
         CHORD_AFT,
       );
       fillPlanform(ctx.grid, frame, plan, { pal, part });
+      buildFences(ctx, p, plan, side, part);
       continue;
     }
 
@@ -82,6 +90,46 @@ export function buildSurfacePair(
       CHORD_AFT,
     );
     fillPlanform(ctx.grid, outerFrame, { ...plan, spanFrom: breakAt }, { pal, part });
+    buildFences(ctx, p, plan, side, part);
+  }
+}
+
+/**
+ * Chordwise fences on a wing's upper surface. Built in world axes rather than
+ * the wing's own frame: the frame's thickness axis flips sign between the two
+ * sides, so "up" has to come from the world or one fence ends up underneath.
+ */
+function buildFences(
+  ctx: BuildCtx,
+  p: SurfaceParams,
+  plan: Planform,
+  side: 1 | -1,
+  part: number,
+): void {
+  if (!p.fences?.length) return;
+  const rootOffset = p.rootOffset ?? 0;
+  const dihedral = (p.dihedral ?? 0) * DEG;
+  const pal = ctx.pal.idx('skinDark');
+  const xRoot = ctx.gx(rootOffset * side);
+  const yRoot = ctx.gy(p.atY);
+  const zRoot = ctx.gzAft(p.atZ);
+
+  for (const fence of p.fences) {
+    const s = plan.span * clamp(fence.at, 0, 1);
+    const st = planformStation(plan, s);
+    const wx = xRoot + side * Math.cos(dihedral) * s;
+    const wy = yRoot + Math.sin(dihedral) * s;
+    // Chord runs aft, which is -Z from the leading edge.
+    const zLe = zRoot - st.le;
+    const z0 = zLe - st.chord * (fence.chordTo ?? 0.95);
+    const z1 = zLe - st.chord * (fence.chordFrom ?? 0.08);
+    const h = Math.max(1.2, ctx.v(fence.height));
+    fillBox(
+      ctx.grid,
+      [wx - 0.5, wy - ctx.v(p.thickness) * 0.4, Math.min(z0, z1)],
+      [wx + 0.5, wy + h, Math.max(z0, z1)],
+      { pal, part, mode: 'fill-empty' },
+    );
   }
 }
 

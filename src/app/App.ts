@@ -39,11 +39,11 @@ const VIEW_DIRS: Record<ViewName, [number, number, number]> = {
 
 /**
  * Up vector per view. Straight up or down leaves the roll undefined against
- * the default +Y, so those two name it explicitly: noses point to the top of
- * the frame.
+ * the default +Y, so those name it explicitly. Plan view follows the
+ * three-view convention: nose to the top of the frame.
  */
 const VIEW_UPS: Partial<Record<ViewName, [number, number, number]>> = {
-  plan: [0, 0, -1],
+  plan: [0, 0, 1],
   under: [0, 0, -1],
 };
 
@@ -148,23 +148,26 @@ export class App {
    */
   private async loadGallery(set: string): Promise<void> {
     const params = new URLSearchParams(location.search);
-    const ids = GALLERY_SETS[set] ?? GALLERY_SETS['2b'];
+    // A named set, or an ad-hoc comma-separated id list for a close look.
+    const ids = GALLERY_SETS[set] ?? set.split(',').map((s2) => s2.trim()).filter(Boolean);
     const gallery = new Gallery(document.body);
     this.gallery = gallery;
     this.pivot.add(gallery.group);
     this.idle = false;
     this.pivot.rotation.set(0, 0, 0);
     this.rig.setParallax(false);
+    this.clouds.mesh.visible = false;
     document.querySelector('.chrome')?.setAttribute('hidden', '');
 
+    const view = (params.get('view') ?? 'plan') as ViewName;
     await gallery.load(
       ids,
       Number(params.get('density')) || 1,
       params.get('shared') !== '0',
+      view === 'plan',
     );
     console.info(`[gallery ${set}]\n${gallery.table()}`);
 
-    const view = (params.get('view') ?? 'plan') as ViewName;
     const b = gallery.bounds();
     const size = b.getSize(new Vector3());
     const centre = b.getCenter(new Vector3());
@@ -172,10 +175,10 @@ export class App {
 
     // Re-fit on every resize: the pane can change aspect after the build
     // finishes, and a row fitted to the old aspect ends up badly framed.
-    // Captions go below the model on screen, which is +Z in a plan view and
-    // -Y in anything oblique.
+    // Captions go below the model on screen. With the nose-up plan view that
+    // is -Z (toward the tail); anything oblique keeps normal -Y.
     this.labelOffset =
-      view === 'plan' ? new Vector3(0, 0, size.z * 0.5 + 1.6) : new Vector3(0, -3.6, 0);
+      view === 'plan' ? new Vector3(0, 0, -(size.z * 0.5 + 1.6)) : new Vector3(0, -3.6, 0);
 
     this.refit = () => {
       const fov = 34;
@@ -209,6 +212,7 @@ export class App {
     this.idle = false;
     this.pivot.rotation.set(0, 0, 0);
     this.rig.setParallax(false);
+    this.clouds.mesh.visible = false;
     document.querySelector('.chrome')?.setAttribute('hidden', '');
 
     const only = params.get('only');

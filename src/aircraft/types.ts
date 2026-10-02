@@ -115,6 +115,11 @@ export interface SurfaceParams {
   tipThicknessRatio?: number;
   palette?: PaletteSlot;
   /**
+   * Chordwise fences on the upper surface. Early swept wings used them to
+   * stop spanwise flow running out to the tip and stalling it.
+   */
+  fences?: FenceParams[];
+  /**
    * Where a horizontal surface attaches. `fin-top` is a T-tail, `fin-mid`
    * the part-way mounting used on the MiG-15. Both read their height from
    * the vertical tail, so the config does not have to restate it.
@@ -126,6 +131,17 @@ export interface SurfaceParams {
    * `sweepMax`, and `SurfaceParams.sweep` is ignored in favour of those.
    */
   vg?: VariableGeometry;
+}
+
+/** A chordwise fence standing proud of a wing's upper surface. */
+export interface FenceParams {
+  /** Spanwise station as a fraction of the exposed half-span. */
+  at: number;
+  /** How far it stands above the surface, metres. */
+  height: number;
+  /** Chord fractions the fence runs between. */
+  chordFrom?: number;
+  chordTo?: number;
 }
 
 export interface VariableGeometry {

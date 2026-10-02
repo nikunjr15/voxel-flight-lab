@@ -395,12 +395,23 @@
   display: none;
 }
 
-/* Gallery rows pack many captions side by side, so they run narrower. */
+
+/* Gallery captions sit shoulder to shoulder, so they are fixed width and
+   never wrap: two spec lines, each on exactly one line. */
 .rig-labels--gallery .rig-label {
-  width: 124px;
+  width: 150px;
+}
+
+.rig-labels--gallery .rig-label b,
+.rig-labels--gallery .rig-label span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rig-labels--gallery .rig-label span {
+  display: block;
+  margin-top: 2px;
   font-size: 10px;
-  line-height: 1.3;
+  line-height: 1.35;
 }
