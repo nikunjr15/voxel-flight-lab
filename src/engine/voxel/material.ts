@@ -124,7 +124,7 @@ export function createVoxelUniforms(partState: PartState): VoxelUniforms {
     uMorph: { value: 0 },
     uExplode: { value: 0 },
     uExplodeScale: { value: 1.2 },
-    uAOStrength: { value: 0.52 },
+    uAOStrength: { value: 0.33 },
     uAccent: { value: new Color('#ff6a2b') },
   };
 }
@@ -215,11 +215,12 @@ export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): M
     roughness: 0.86,
     metalness: 0.03,
     flatShading: false,
-    // Painted skin should not mirror the room. At full strength the
-    // environment lobe sweeps a soft bright-to-dark gradient across a large
-    // flat panel like a wing, which reads as blotchy dirt rather than paint.
-    // Metal keeps its own, higher, value below.
-    envMapIntensity: 0.3,
+    // Painted skin takes no image-based lighting at all. Even a smooth
+    // environment gradient reflects off a large flat panel as a soft oval
+    // that sweeps with the view, because the reflection vector swings with
+    // perspective across the panel. That read as dirt on the wings. Lights
+    // alone light the skin; metal and glass keep their reflections.
+    envMapIntensity: 0,
   };
 
   let emissiveBoost = 0;

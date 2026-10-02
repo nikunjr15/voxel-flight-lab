@@ -9,7 +9,7 @@ export const F4: AircraftConfig = {
   id: 'f-4',
   name: 'F-4 Phantom II',
   designation: 'F-4',
-  exhibitNo: '007',
+  exhibitNo: '008',
   chapter: 3,
   spec: {
     firstFlight: 1958,

@@ -18,9 +18,9 @@ export const GALLERY_SETS: Record<string, string[]> = {
   // Era 1 and 2, with a fourth-generation reference for scale.
   '2b': ['me-262', 'f-86', 'mig-15', 'mig-21', 'f-104', 'mirage-3', 'f-16'],
   era1: ['me-262', 'f-86', 'mig-15'],
-  era2: ['mig-21', 'f-104', 'mirage-3'],
-  '2c': ['f-4', 'mig-23', 'ajeet', 'f-15', 'su-27', 'mig-29', 'mirage-2000', 'f-16'],
-  era3: ['f-4', 'mig-23', 'ajeet'],
+  era2: ['mig-21', 'f-104', 'mirage-3', 'gnat'],
+  '2c': ['f-4', 'mig-23', 'f-15', 'su-27', 'mig-29', 'mirage-2000', 'f-16'],
+  era3: ['f-4', 'mig-23'],
   era4: ['f-15', 'f-16', 'su-27', 'mig-29', 'mirage-2000'],
   all: AIRCRAFT.map((a) => a.id),
 };
@@ -50,11 +50,17 @@ export class Gallery {
    * than that aircraft would have been on its own -- and no jet gets quantised
    * to a different grid, which is what made relative scale read wrong.
    */
-  static sharedVoxelSize(configs: AircraftConfig[]): number {
-    const largest = Math.max(
-      ...configs.map((c) => Math.sqrt(c.geometry.fuselage.length * c.geometry.bbox.span)),
+  static sharedVoxelSize(configs: AircraftConfig[], from: 'largest' | 'smallest' = 'largest'): number {
+    const planforms = configs.map((c) =>
+      Math.sqrt(c.geometry.fuselage.length * c.geometry.bbox.span),
     );
-    return largest / TARGET_PLANFORM_VOXELS;
+    // An era row takes its block size from the largest airframe, so nothing in
+    // it is finer than that jet would have been alone and the row stays cheap.
+    // A compare pair takes it from the smaller one instead: with only two
+    // models on screen the budget is there, and sizing to the larger leaves a
+    // small jet like the Gnat as unreadable mush beside it.
+    return (from === 'largest' ? Math.max(...planforms) : Math.min(...planforms)) /
+      TARGET_PLANFORM_VOXELS;
   }
 
   /**
@@ -62,16 +68,31 @@ export class Gallery {
    * looking down with the nose up necessarily mirrors the X axis, so this is
    * what keeps the row reading left to right on screen in both views.
    */
-  async load(ids: string[], density = 1, shared = true, reverse = false): Promise<void> {
+  async load(
+    ids: string[],
+    density = 1,
+    shared = true,
+    reverse = false,
+    sizeFrom: 'largest' | 'smallest' = 'largest',
+    perRow = Infinity,
+  ): Promise<void> {
     const found = ids
       .map((id) => AIRCRAFT.find((a) => a.id === id))
       .filter((a): a is AircraftConfig => Boolean(a));
     const configs = reverse ? [...found].reverse() : found;
 
-    const voxelSize = shared ? Gallery.sharedVoxelSize(configs) : undefined;
+    const voxelSize = shared ? Gallery.sharedVoxelSize(configs, sizeFrom) : undefined;
     this.voxelSize = voxelSize ?? 0;
 
+    // A single row of eight is so wide that an oblique view has to pull back
+    // until each jet is a few pixels. Wrapping keeps them legible.
+    const rows = Math.max(1, Math.ceil(configs.length / Math.min(perRow, configs.length)));
+    const rowDepth = 26;
     let cursor = 0;
+    let rowIndex = 0;
+    let inRow = 0;
+    let widest = 0;
+
     for (const config of configs) {
       const data = await buildClient.build(config, { density, voxelSize });
       const model = new VoxelModel(config.id, data);
@@ -81,11 +102,19 @@ export class Gallery {
       const size = model.size;
       const holder = new Group();
       holder.add(model.group);
+
+      if (inRow >= perRow) {
+        widest = Math.max(widest, cursor);
+        cursor = 0;
+        inRow = 0;
+        rowIndex++;
+      }
       // Half this model's span, plus a constant gutter, from the last one.
-      const step = size.x / 2 + 2.2;
-      cursor += this.placed.length === 0 ? 0 : step;
-      holder.position.set(cursor, 0, 0);
-      cursor += size.x / 2 + 2.2;
+      const step = size.x / 2 + 2.9;
+      cursor += inRow === 0 ? 0 : step;
+      holder.position.set(cursor, 0, -rowIndex * rowDepth);
+      cursor += size.x / 2 + 2.9;
+      inRow++;
 
       this.group.add(holder);
       this.placed.push({
@@ -98,9 +127,22 @@ export class Gallery {
       this.addLabel(config, size);
     }
 
-    // Re-centre the whole row so the camera can simply look at the origin.
-    const mid = cursor / 2 - (this.placed[0]?.model.size.x ?? 0) / 2;
-    this.group.position.x = -mid;
+    // Re-centre so the camera can simply look at the origin. Each row is
+    // centred on the widest one, and the block as a whole on its depth.
+    widest = Math.max(widest, cursor);
+    this.group.position.x = -widest / 2;
+    this.group.position.z = ((rows - 1) * rowDepth) / 2;
+    for (const p of this.placed) {
+      // Rows shorter than the widest get nudged back to centre.
+      const rowOf = Math.round(-p.at.z / rowDepth);
+      const rowWidth = this.placed
+        .filter((q) => Math.round(-q.at.z / rowDepth) === rowOf)
+        .reduce((max, q) => Math.max(max, q.at.x + q.model.size.x / 2), 0);
+      const shift = (widest - rowWidth) / 2;
+      p.at.x += shift;
+      const holder = this.group.children[this.placed.indexOf(p)] as Group | undefined;
+      if (holder) holder.position.x += shift;
+    }
   }
 
   /** Two fixed spec lines, so no caption wraps differently from its neighbour. */

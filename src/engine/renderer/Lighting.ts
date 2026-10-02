@@ -23,12 +23,10 @@ function makeEnvSource(): DataTexture {
   const sky = [1.08, 1.12, 1.18];
   const horizon = [0.95, 0.94, 0.92];
   const floor = [0.52, 0.5, 0.49];
-  const warm = [1.5, 1.12, 0.78];
 
   for (let y = 0; y < h; y++) {
     const v = y / (h - 1);
     for (let x = 0; x < w; x++) {
-      const u = x / (w - 1);
       let r: number;
       let g: number;
       let b: number;
@@ -43,13 +41,14 @@ function makeEnvSource(): DataTexture {
         g = horizon[1] + (floor[1] - horizon[1]) * t;
         b = horizon[2] + (floor[2] - horizon[2]) * t;
       }
-      // Warm key lobe up and to the left, matching the directional key light.
-      const d = Math.hypot((u - 0.17) * 2.2, (v - 0.26) * 2.6);
-      const k = Math.max(0, 1 - d) ** 2.2;
+      // Deliberately no bright lobe. A hotspot in the environment reflects
+      // off a large flat panel as a soft oval that sweeps with the view, which
+      // read as dirty patches on wings. The warm key is a directional light;
+      // the environment only has to supply smooth ambient gradient.
       const i = (y * w + x) * 4;
-      data[i] = r + warm[0] * k;
-      data[i + 1] = g + warm[1] * k;
-      data[i + 2] = b + warm[2] * k;
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
       data[i + 3] = 1;
     }
   }
@@ -70,10 +69,11 @@ export interface LightingHandles {
 }
 
 export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHandles {
-  const ambient = new HemisphereLight(0xe8eef5, 0x9aa0a6, 0.85);
+  // Carries the ambient the skin no longer gets from the environment map.
+  const ambient = new HemisphereLight(0xe8eef5, 0x9aa0a6, 1.02);
   scene.add(ambient);
 
-  const key = new DirectionalLight(0xfff0e0, 2.1);
+  const key = new DirectionalLight(0xfff0e0, 2.05);
   key.position.set(-9, 11, 7);
   scene.add(key);
 
@@ -84,7 +84,7 @@ export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHa
   // Soft bounce from below. Without it the belly, the intakes and an open
   // weapons bay fall into solid black and the modes that show them read as
   // empty silhouettes.
-  const bounce = new DirectionalLight(0xdfe7ee, 0.42);
+  const bounce = new DirectionalLight(0xdfe7ee, 0.45);
   bounce.position.set(-3, -8, 4);
   scene.add(bounce);
 

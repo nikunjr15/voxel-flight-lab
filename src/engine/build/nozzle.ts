@@ -102,7 +102,11 @@ function buildRoundNozzle(
           const cut = toothDepth * (1 - sawtooth(Math.atan2(dy, dx), teeth));
           if (z < zExit + cut) continue;
         }
-        applyFill(grid, 'set', x, y, z, nozzlePal, part);
+        // Only the exit ring forces itself over the skin. Further forward the
+        // tube is buried inside the fuselage, and overwriting there punches
+        // dark nozzle metal through the top of the tail.
+        const mode = z <= zExit + toothDepth + 2 ? 'set' : 'fill-empty';
+        applyFill(grid, mode, x, y, z, nozzlePal, part);
       }
     }
   }
@@ -168,7 +172,11 @@ function build2DNozzle(
           const cut = toothDepth * (1 - sawtooth((u * 0.5 + 0.5) * Math.PI * 2, teeth));
           if (z < zExit + cut) continue;
         }
-        applyFill(grid, 'set', x, y, z, nozzlePal, part);
+        // Only the exit ring forces itself over the skin. Further forward the
+        // tube is buried inside the fuselage, and overwriting there punches
+        // dark nozzle metal through the top of the tail.
+        const mode = z <= zExit + toothDepth + 2 ? 'set' : 'fill-empty';
+        applyFill(grid, mode, x, y, z, nozzlePal, part);
       }
     }
   }

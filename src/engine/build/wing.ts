@@ -221,19 +221,31 @@ export function buildVariableWing(
       [side * Math.cos(dihedral), Math.sin(dihedral), 0],
       CHORD_AFT,
     );
-    fillPlanform(
+    const panelPlan = {
+      span: ctx.v(vg.panelSpan) * cosT,
+      rootChord: ctx.v(vg.panelRootChord) / cosT,
+      tipChord: ctx.v(vg.panelTipChord) / cosT,
+      sweep: theta,
+      thickness: ctx.v(p.thickness),
+      tipThicknessRatio: p.tipThicknessRatio ?? 0.6,
+      roundTip: p.roundTip,
+    };
+    fillPlanform(ctx.grid, panelFrame, panelPlan, { pal, part });
+
+    // Seal fairing over the pivot. The panel root and the glove trailing edge
+    // only line up at one sweep angle; everywhere else the joint opens into a
+    // notch. A short body spanning both closes it at every setting, which is
+    // what the real aircraft's sliding seal does.
+    const sealX = ctx.gx(vg.pivotX * side);
+    const zPanelLe = z - pivotLE;
+    const zGloveTe = z - Math.tan(vg.gloveSweep * DEG) * ctx.v(gloveSpan) - ctx.v(vg.gloveChord);
+    const zPanelTe = zPanelLe - panelPlan.rootChord;
+    const halfT = Math.max(1.2, ctx.v(p.thickness) * 0.62);
+    fillBox(
       ctx.grid,
-      panelFrame,
-      {
-        span: ctx.v(vg.panelSpan) * cosT,
-        rootChord: ctx.v(vg.panelRootChord) / cosT,
-        tipChord: ctx.v(vg.panelTipChord) / cosT,
-        sweep: theta,
-        thickness: ctx.v(p.thickness),
-        tipThicknessRatio: p.tipThicknessRatio ?? 0.6,
-        roundTip: p.roundTip,
-      },
-      { pal, part },
+      [sealX - Math.max(1.2, ctx.v(0.3)), y - halfT, Math.min(zGloveTe, zPanelTe)],
+      [sealX + Math.max(1.2, ctx.v(0.3)), y + halfT, Math.max(z, zPanelLe)],
+      { pal, part, mode: 'fill-empty' },
     );
   }
 }

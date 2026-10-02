@@ -63,12 +63,15 @@ function maskFor(ctx: BuildCtx, marking: CountryMarking, radius: number): Mask {
     }
 
     case 'star-bar': {
-      const star = starPolygon(radius * 0.72);
-      const discR = radius * 0.82;
-      const [blue, white, red] = [pal[0], pal[1] ?? pal[0], pal[2] ?? pal[0]];
-      // Below roughly nine voxels across, the bars turn to noise. Drop them and
-      // keep the star on its disc, which still reads at exhibit scale.
       const withBars = radius >= 9;
+      // Without bars the disc is all there is, so the star grows to fill it;
+      // at 0.72 it erodes to an unreadable blob at exhibit sizes.
+      const star = starPolygon(radius * (withBars ? 0.72 : 0.8));
+      // Without bars the disc grows to the full radius so a blue ring still
+      // frames the enlarged star instead of being eaten by it.
+      const discR = radius * (withBars ? 0.82 : 1.0);
+      const [blue, white, red] = [pal[0], pal[1] ?? pal[0], pal[2] ?? pal[0]];
+      // Below roughly nine voxels across, the bars turn to noise.
       const barLen = radius * 2.0;
       const barH = radius * 0.46;
       return (u, v) => {

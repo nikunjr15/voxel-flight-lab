@@ -1,23 +1,23 @@
 import type { AircraftConfig } from '../types';
 
 /**
- * HAL Ajeet, the Indian development of the Folland Gnat. The smallest jet in
- * the collection by a wide margin, with intakes in the wing roots.
+ * Folland Gnat, built under licence in India by HAL. The smallest jet in the
+ * collection by a wide margin, with intakes in the wing roots.
  */
-export const AJEET: AircraftConfig = {
-  id: 'ajeet',
-  name: 'HAL Ajeet',
-  designation: 'Ajeet',
-  exhibitNo: '009',
-  chapter: 3,
+export const GNAT: AircraftConfig = {
+  id: 'gnat',
+  name: 'HAL Gnat',
+  designation: 'Gnat',
+  exhibitNo: '007',
+  chapter: 2,
   spec: {
-    firstFlight: 1975,
+    firstFlight: 1955,
     topSpeedKmh: 1100,
     engines: { count: 1, type: 'turbojet' },
     crew: 1,
     role: 'Light fighter',
     country: 'IN',
-    generation: '3',
+    generation: '2',
     lengthM: 9.04,
     spanM: 6.73,
     heightM: 2.69,
@@ -33,7 +33,7 @@ export const AJEET: AircraftConfig = {
       {
         n: '01',
         title: 'Small on purpose',
-        body: 'Nine metres long and under seven across. The Gnat was designed against the belief that fighters had to keep growing, and India developed it further as the Ajeet.',
+        body: 'Nine metres long and under seven across. The Gnat was drawn against the belief that fighters had to keep growing, and India built it under licence and then developed it further as the Ajeet.',
       },
       {
         n: '02',
@@ -42,8 +42,8 @@ export const AJEET: AircraftConfig = {
       },
       {
         n: '03',
-        title: 'Hard to see',
-        body: 'Its size was a tactical asset. A small aircraft is spotted late, and late detection in a visual fight is most of the advantage.',
+        title: 'Sabre Slayer',
+        body: 'Indian Gnats were credited against Pakistani F-86 Sabres in 1965 and 1971, and the nickname stuck. A small aircraft is spotted late, and late detection in a visual fight is most of the advantage.',
       },
     ],
   },

@@ -165,6 +165,10 @@ export class App {
       Number(params.get('density')) || 1,
       params.get('shared') !== '0',
       view === 'plan',
+      // Two jets side by side is the compare case, so size to the smaller one.
+      ids.length === 2 ? 'smallest' : 'largest',
+      // Plan view reads fine as one long row; an oblique view does not.
+      view === 'plan' || ids.length <= 4 ? Infinity : Math.ceil(ids.length / 2),
     );
     console.info(`[gallery ${set}]\n${gallery.table()}`);
 
@@ -178,7 +182,7 @@ export class App {
     // Captions go below the model on screen. With the nose-up plan view that
     // is -Z (toward the tail); anything oblique keeps normal -Y.
     this.labelOffset =
-      view === 'plan' ? new Vector3(0, 0, -(size.z * 0.5 + 1.6)) : new Vector3(0, -3.6, 0);
+      view === 'plan' ? new Vector3(0, 0, -(size.z * 0.5 + 2.1)) : new Vector3(0, -4.2, 0);
 
     this.refit = () => {
       const fov = 34;
@@ -186,7 +190,9 @@ export class App {
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (this.stage.camera.aspect || 1));
       // Oblique views need more slack than a dead-on one: perspective makes the
       // near end of a long row larger than the centre-based fit predicts.
-      const slack = view === 'plan' ? 1.06 : 1.22;
+      // Plan view leaves extra room below the row for the DOM captions, which
+      // the 3D fit knows nothing about.
+      const slack = view === 'plan' ? 1.2 : 1.08;
       const dist = fitDistance(size, dir, VIEW_UPS[view], hFov, vFov) * slack;
       const p = dir.clone().normalize().multiplyScalar(dist).add(centre);
       this.rig.set({

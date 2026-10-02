@@ -84,7 +84,9 @@ export const ME262: AircraftConfig = {
     wing: {
       kind: 'swept',
       span: 12.6,
-      rootOffset: 0.5,
+      // The triangular section is only about 0.32 m half-wide at wing height,
+      // so a wider root inset leaves a visible seam at the join.
+      rootOffset: 0.26,
       rootChord: 3.1,
       tipChord: 1.15,
       sweep: 18.5,

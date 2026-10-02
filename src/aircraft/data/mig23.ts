@@ -8,7 +8,7 @@ export const MIG23: AircraftConfig = {
   id: 'mig-23',
   name: 'MiG-23',
   designation: 'MiG-23',
-  exhibitNo: '008',
+  exhibitNo: '009',
   chapter: 3,
   spec: {
     firstFlight: 1967,
