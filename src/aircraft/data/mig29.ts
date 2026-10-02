@@ -164,7 +164,7 @@ export const MIG29: AircraftConfig = {
     },
     markings: {
       radius: 0.66,
-      wing: { x: 2.8, z: 10.0 },
+      wing: { x: 2.8, chord: 0.4 },
       fuselageZ: 10.6,
     },
   },

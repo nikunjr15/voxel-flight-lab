@@ -149,7 +149,7 @@ export const MIG15: AircraftConfig = {
     },
     markings: {
       radius: 0.7,
-      wing: { x: 2.5, z: 5.2 },
+      wing: { x: 2.5, chord: 0.5 },
       fuselageZ: 6.5,
     },
   },

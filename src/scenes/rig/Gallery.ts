@@ -13,6 +13,19 @@ interface Placed {
   buildMs: number;
 }
 
+/** Roughly what a jet costs at TARGET_PLANFORM_VOXELS, measured across the roster. */
+// Deliberately on the high side: short wide airframes carry more surface
+// than the median, and the estimate has to hold for the worst case.
+const TYPICAL_VOXELS = 13500;
+
+/**
+ * Ceiling for the larger jet in a compare pair. The mobile cap of about 9k is
+ * the binding one: mobile builds at density 0.65, and surface count scales
+ * with density squared, so 9k on mobile is about 21k on desktop -- under the
+ * 25k desktop ceiling, and therefore the number that actually applies.
+ */
+const COMPARE_MAX_VOXELS = 21000;
+
 /** Named batches, so a review can pull up exactly the set under discussion. */
 export const GALLERY_SETS: Record<string, string[]> = {
   // Era 1 and 2, with a fourth-generation reference for scale.
@@ -56,11 +69,20 @@ export class Gallery {
     );
     // An era row takes its block size from the largest airframe, so nothing in
     // it is finer than that jet would have been alone and the row stays cheap.
-    // A compare pair takes it from the smaller one instead: with only two
-    // models on screen the budget is there, and sizing to the larger leaves a
-    // small jet like the Gnat as unreadable mush beside it.
-    return (from === 'largest' ? Math.max(...planforms) : Math.min(...planforms)) /
-      TARGET_PLANFORM_VOXELS;
+    if (from === 'largest') return Math.max(...planforms) / TARGET_PLANFORM_VOXELS;
+
+    // A compare pair sizes to the smaller jet, because sizing to the larger
+    // leaves something like the Gnat as unreadable mush beside it. But a wide
+    // size ratio then pushes the larger jet far past budget, so the block is
+    // coarsened until the larger one fits the cap.
+    //
+    // Surface count scales with (planform / voxelSize)^2, and at
+    // TARGET_PLANFORM_VOXELS a jet lands near TYPICAL_VOXELS. That gives the
+    // coarsest-allowed block directly, without having to build and measure.
+    const small = Math.min(...planforms) / TARGET_PLANFORM_VOXELS;
+    const large = Math.max(...planforms);
+    const capped = large / (TARGET_PLANFORM_VOXELS * Math.sqrt(COMPARE_MAX_VOXELS / TYPICAL_VOXELS));
+    return Math.max(small, capped);
   }
 
   /**
@@ -127,22 +149,28 @@ export class Gallery {
       this.addLabel(config, size);
     }
 
-    // Re-centre so the camera can simply look at the origin. Each row is
-    // centred on the widest one, and the block as a whole on its depth.
+    // Centre each row on the widest one, then centre the whole block on its
+    // own bounds. Deriving the offset from the bounds rather than from the
+    // running cursor keeps world coordinates honest, which matters because
+    // the review camera aims at points in that space.
     widest = Math.max(widest, cursor);
-    this.group.position.x = -widest / 2;
-    this.group.position.z = ((rows - 1) * rowDepth) / 2;
-    for (const p of this.placed) {
-      // Rows shorter than the widest get nudged back to centre.
+    for (let i = 0; i < this.placed.length; i++) {
+      const p = this.placed[i];
       const rowOf = Math.round(-p.at.z / rowDepth);
       const rowWidth = this.placed
         .filter((q) => Math.round(-q.at.z / rowDepth) === rowOf)
         .reduce((max, q) => Math.max(max, q.at.x + q.model.size.x / 2), 0);
       const shift = (widest - rowWidth) / 2;
       p.at.x += shift;
-      const holder = this.group.children[this.placed.indexOf(p)] as Group | undefined;
+      const holder = this.group.children[i] as Group | undefined;
       if (holder) holder.position.x += shift;
     }
+
+    this.group.position.set(0, 0, 0);
+    const box = new Box3().setFromObject(this.group);
+    const mid = box.getCenter(new Vector3());
+    this.group.position.set(-mid.x, 0, -mid.z);
+    void rows;
   }
 
   /** Two fixed spec lines, so no caption wraps differently from its neighbour. */

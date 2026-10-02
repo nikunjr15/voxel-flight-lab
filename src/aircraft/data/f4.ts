@@ -176,7 +176,7 @@ export const F4: AircraftConfig = {
     ],
     markings: {
       radius: 0.74,
-      wing: { x: 2.8, z: 10.6 },
+      wing: { x: 2.8, chord: 0.4 },
       fuselageZ: 12.6,
     },
   },

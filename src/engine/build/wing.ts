@@ -191,8 +191,14 @@ export function buildVariableWing(
   for (const side of [1, -1] as const) {
     const part = ctx.p(side > 0 ? partR : partL);
 
-    // Fixed glove, from the fuselage side out to the pivot.
+    // Fixed glove, from the fuselage side out to the pivot. Its tip chord is
+    // derived, not given: the leading edge is steeply swept while the trailing
+    // edge stays roughly straight, so the glove is a triangle that shrinks to
+    // the pivot. Holding the chord constant instead produced a long
+    // streamwise plank down each side of the fuselage.
     const gloveSpan = vg.pivotX - rootOffset;
+    const gloveLeRun = Math.tan(vg.gloveSweep * DEG) * ctx.v(gloveSpan);
+    const gloveTipChord = Math.max(ctx.v(0.6), ctx.v(vg.gloveChord) - gloveLeRun);
     if (gloveSpan > 0) {
       const gloveFrame = makeFrame(
         [ctx.gx(rootOffset * side), y, z],
@@ -205,7 +211,7 @@ export function buildVariableWing(
         {
           span: ctx.v(gloveSpan),
           rootChord: ctx.v(vg.gloveChord),
-          tipChord: ctx.v(vg.gloveChord * 0.92),
+          tipChord: gloveTipChord,
           sweep: vg.gloveSweep * DEG,
           thickness: ctx.v(p.thickness * 1.25),
           tipThicknessRatio: 0.85,
@@ -214,8 +220,9 @@ export function buildVariableWing(
       );
     }
 
-    // Movable panel, hinged at the pivot.
-    const pivotLE = Math.tan(vg.gloveSweep * DEG) * ctx.v(gloveSpan) * 0.35;
+    // The panel hinges where the glove leading edge reaches the pivot, so the
+    // two leading edges meet rather than stepping.
+    const pivotLE = gloveLeRun;
     const panelFrame = makeFrame(
       [ctx.gx(vg.pivotX * side), y, z - pivotLE],
       [side * Math.cos(dihedral), Math.sin(dihedral), 0],
@@ -232,21 +239,27 @@ export function buildVariableWing(
     };
     fillPlanform(ctx.grid, panelFrame, panelPlan, { pal, part });
 
-    // Seal fairing over the pivot. The panel root and the glove trailing edge
-    // only line up at one sweep angle; everywhere else the joint opens into a
-    // notch. A short body spanning both closes it at every setting, which is
-    // what the real aircraft's sliding seal does.
+    // Seal over the pivot. The glove trailing edge and the panel root only
+    // line up at one sweep angle; elsewhere the joint opens a notch. The seal
+    // spans just the chordwise overlap at the pivot station -- bounded by the
+    // two trailing edges, never running forward past the leading edges -- so
+    // it closes the notch at any setting without becoming a plank.
     const sealX = ctx.gx(vg.pivotX * side);
     const zPanelLe = z - pivotLE;
-    const zGloveTe = z - Math.tan(vg.gloveSweep * DEG) * ctx.v(gloveSpan) - ctx.v(vg.gloveChord);
+    const zGloveTe = z - gloveLeRun - gloveTipChord;
     const zPanelTe = zPanelLe - panelPlan.rootChord;
     const halfT = Math.max(1.2, ctx.v(p.thickness) * 0.62);
-    fillBox(
-      ctx.grid,
-      [sealX - Math.max(1.2, ctx.v(0.3)), y - halfT, Math.min(zGloveTe, zPanelTe)],
-      [sealX + Math.max(1.2, ctx.v(0.3)), y + halfT, Math.max(z, zPanelLe)],
-      { pal, part, mode: 'fill-empty' },
-    );
+    const sealHalfWidth = Math.max(1.2, ctx.v(0.22));
+    const sealAft = Math.min(zGloveTe, zPanelTe);
+    const sealFwd = Math.min(zPanelLe, z - gloveLeRun);
+    if (sealFwd > sealAft) {
+      fillBox(
+        ctx.grid,
+        [sealX - sealHalfWidth, y - halfT, sealAft],
+        [sealX + sealHalfWidth, y + halfT, sealFwd],
+        { pal, part, mode: 'fill-empty' },
+      );
+    }
   }
 }
 

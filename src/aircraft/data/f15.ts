@@ -166,7 +166,7 @@ export const F15: AircraftConfig = {
     },
     markings: {
       radius: 0.78,
-      wing: { x: 3.2, z: 10.2 },
+      wing: { x: 3.2, chord: 0.4 },
       fuselageZ: 12.2,
     },
   },

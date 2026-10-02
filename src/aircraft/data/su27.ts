@@ -188,7 +188,7 @@ export const SU27: AircraftConfig = {
     ],
     markings: {
       radius: 0.78,
-      wing: { x: 3.6, z: 12.4 },
+      wing: { x: 3.6, chord: 0.4 },
       fuselageZ: 13.4,
     },
   },

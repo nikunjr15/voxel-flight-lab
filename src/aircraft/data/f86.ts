@@ -126,11 +126,11 @@ export const F86: AircraftConfig = {
     nozzle: {
       kind: 'round',
       atZ: 11.35,
-      radius: 0.42,
+      radius: 0.34,
       atY: 0.06,
       length: 1.1,
       engineFromZ: 6.6,
-      engineRadius: 0.4,
+      engineRadius: 0.32,
     },
     canopy: {
       fromZ: 2.85,
@@ -143,7 +143,7 @@ export const F86: AircraftConfig = {
     },
     markings: {
       radius: 0.78,
-      wing: { x: 2.9, z: 5.9 },
+      wing: { x: 2.9, chord: 0.5 },
       fuselageZ: 6.3,
     },
   },

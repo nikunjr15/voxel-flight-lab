@@ -166,7 +166,7 @@ export const MIG21: AircraftConfig = {
     ],
     markings: {
       radius: 0.62,
-      wing: { x: 1.9, z: 8.8 },
+      wing: { x: 1.9, chord: 0.45 },
       fuselageZ: 10.2,
     },
   },

@@ -177,8 +177,8 @@ export const MIG23: AircraftConfig = {
       },
     ],
     markings: {
-      radius: 0.64,
-      wing: { x: 2.6, z: 9.4 },
+      radius: 0.5,
+      wing: { x: 1.42, chord: 0.45 },
       fuselageZ: 11.6,
     },
   },

@@ -227,9 +227,11 @@ export function createVoxelMaterial({ kind, uniforms }: VoxelMaterialOptions): M
 
   switch (kind) {
     case 'metal':
-      base.roughness = 0.3;
-      base.metalness = 0.85;
-      base.envMapIntensity = 1;
+      // Short of a mirror. At 0.85 the nozzle bore had no diffuse to carry it
+      // and read as a black hole from every angle.
+      base.roughness = 0.44;
+      base.metalness = 0.6;
+      base.envMapIntensity = 0.9;
       break;
     case 'emissive':
       base.roughness = 0.6;

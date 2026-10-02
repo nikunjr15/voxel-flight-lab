@@ -319,8 +319,13 @@ export interface MarkingParams {
   style?: MarkingStyle;
   /** Metres aft of the nose for the fuselage-side marking. */
   fuselageZ?: number;
-  /** Wing marking centre: metres outboard and metres aft of the nose. */
-  wing?: { x: number; z: number };
+  /**
+   * Wing marking centre.  is metres outboard; the fore-aft position is
+   * normally given as , a fraction of the local chord at that station,
+   * because an absolute  on a swept wing easily falls ahead of the leading
+   * edge and the insignia gets clipped.
+   */
+  wing?: { x: number; z?: number; chord?: number };
   radius: number;
   tailFlash?: boolean;
 }

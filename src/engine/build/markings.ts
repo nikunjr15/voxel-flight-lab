@@ -1,7 +1,8 @@
+import { DEG, lerp } from '../util/math';
 import { PART_INDEX, PartId } from '../voxel/parts';
 import { Mask, paintSide, paintTop } from './decals';
 import type { CountryMarking } from '../../aircraft/countries';
-import type { MarkingParams } from '../../aircraft/types';
+import type { MarkingParams, SurfaceParams } from '../../aircraft/types';
 import type { BuildCtx } from './ctx';
 
 /** Even-odd test against the ten vertices of a five-pointed star. */
@@ -113,7 +114,51 @@ const BODY_PARTS = new Set(
   (['fuselage', 'nose', 'spine', 'lerx'] as PartId[]).map((id) => PART_INDEX[id]),
 );
 
-export function buildMarkings(ctx: BuildCtx, p: MarkingParams, marking: CountryMarking): void {
+/**
+ * Where a chord fraction lands, in metres aft of the nose, for a station `x`
+ * metres outboard. Mirrors the planform maths the rasteriser uses, so a
+ * marking placed at mid-chord really sits at mid-chord on a swept wing.
+ */
+function wingChordZ(wing: SurfaceParams, x: number, frac: number): number {
+  const rootOffset = wing.rootOffset ?? 0;
+
+  // On a swing wing the base planform is not what is actually built, so a
+  // marking has to be placed against the fixed glove. Outboard of the pivot
+  // the panel moves with sweep and no fixed station exists.
+  if (wing.vg) {
+    const gloveSpan = Math.max(1e-6, wing.vg.pivotX - rootOffset);
+    const gs = Math.min(Math.max(Math.abs(x) - rootOffset, 0), gloveSpan);
+    const leRun = Math.tan(wing.vg.gloveSweep * DEG) * gloveSpan;
+    const tip = Math.max(0.6, wing.vg.gloveChord - leRun);
+    const le = Math.tan(wing.vg.gloveSweep * DEG) * gs;
+    const chordLen = lerp(wing.vg.gloveChord, tip, gs / gloveSpan);
+    return wing.atZ + le + frac * chordLen;
+  }
+
+  const half = Math.max(1e-6, wing.span / 2 - rootOffset);
+  const s = Math.min(Math.max(Math.abs(x) - rootOffset, 0), half);
+
+  let le: number;
+  let chord: number;
+  const kinkAt = wing.kink ? half * wing.kink.at : half;
+  if (wing.kink && s > kinkAt) {
+    le = Math.tan(wing.sweep * DEG) * kinkAt + Math.tan(wing.kink.sweep * DEG) * (s - kinkAt);
+    const t = (s - kinkAt) / Math.max(1e-6, half - kinkAt);
+    chord = lerp(wing.kink.chord, wing.tipChord, t);
+  } else {
+    le = Math.tan(wing.sweep * DEG) * s;
+    const end = wing.kink ? wing.kink.chord : wing.tipChord;
+    chord = lerp(wing.rootChord, end, kinkAt <= 0 ? 0 : s / kinkAt);
+  }
+  return wing.atZ + le + frac * chord;
+}
+
+export function buildMarkings(
+  ctx: BuildCtx,
+  p: MarkingParams,
+  marking: CountryMarking,
+  wing?: SurfaceParams,
+): void {
   const style = p.style ?? marking.style;
   if (style === 'none') return;
   const radius = ctx.v(p.radius);
@@ -121,8 +166,12 @@ export function buildMarkings(ctx: BuildCtx, p: MarkingParams, marking: CountryM
 
   if (p.wing) {
     const mask = maskFor(ctx, { ...marking, style }, radius);
+    const zAft =
+      p.wing.chord !== undefined && wing
+        ? wingChordZ(wing, p.wing.x, p.wing.chord)
+        : (p.wing.z ?? 0);
     for (const side of [1, -1] as const) {
-      paintTop(ctx.grid, ctx.gx(p.wing.x * side), ctx.gzAft(p.wing.z), radius * 2.3, mask, part, (q) =>
+      paintTop(ctx.grid, ctx.gx(p.wing.x * side), ctx.gzAft(zAft), radius * 2.3, mask, part, (q) =>
         WING_PARTS.has(q),
       );
     }

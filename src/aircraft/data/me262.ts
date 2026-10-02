@@ -152,7 +152,7 @@ export const ME262: AircraftConfig = {
     ],
     markings: {
       radius: 0.8,
-      wing: { x: 3.4, z: 5.6 },
+      wing: { x: 3.4, chord: 0.45 },
       fuselageZ: 7.1,
     },
   },

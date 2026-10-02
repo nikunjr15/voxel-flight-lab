@@ -147,7 +147,7 @@ export const GNAT: AircraftConfig = {
     },
     markings: {
       radius: 0.52,
-      wing: { x: 1.9, z: 4.4 },
+      wing: { x: 1.9, chord: 0.5 },
       fuselageZ: 5.6,
     },
   },

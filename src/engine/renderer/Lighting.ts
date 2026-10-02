@@ -22,7 +22,10 @@ function makeEnvSource(): DataTexture {
   const data = new Float32Array(w * h * 4);
   const sky = [1.08, 1.12, 1.18];
   const horizon = [0.95, 0.94, 0.92];
-  const floor = [0.52, 0.5, 0.49];
+  // The floor is only moderately darker than the horizon. A very dark floor
+  // turns any metal facing down or inward -- a nozzle bore, an intake lip --
+  // almost black, because metal has no diffuse term to fall back on.
+  const floor = [0.74, 0.72, 0.71];
 
   for (let y = 0; y < h; y++) {
     const v = y / (h - 1);

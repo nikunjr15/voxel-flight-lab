@@ -158,7 +158,7 @@ export const MIRAGE2000: AircraftConfig = {
     ],
     markings: {
       radius: 0.68,
-      wing: { x: 2.3, z: 8.8 },
+      wing: { x: 2.3, chord: 0.3 },
       fuselageZ: 6.6,
     },
   },

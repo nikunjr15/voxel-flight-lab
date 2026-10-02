@@ -182,7 +182,7 @@ export const F104: AircraftConfig = {
     ],
     markings: {
       radius: 0.62,
-      wing: { x: 1.9, z: 9.2 },
+      wing: { x: 1.9, chord: 0.45 },
       fuselageZ: 9.6,
     },
   },

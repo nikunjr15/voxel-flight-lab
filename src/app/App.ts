@@ -193,11 +193,17 @@ export class App {
       // Plan view leaves extra room below the row for the DOM captions, which
       // the 3D fit knows nothing about.
       const slack = view === 'plan' ? 1.2 : 1.08;
-      const dist = fitDistance(size, dir, VIEW_UPS[view], hFov, vFov) * slack;
-      const p = dir.clone().normalize().multiplyScalar(dist).add(centre);
+      const zoom = Number(params.get('zoom')) || 1;
+      const at = (params.get('at') ?? '').split(',').map(Number);
+      const look =
+        at.length === 3 && at.every((n) => Number.isFinite(n))
+          ? new Vector3(at[0], at[1], at[2])
+          : centre;
+      const dist = (fitDistance(size, dir, VIEW_UPS[view], hFov, vFov) * slack) / zoom;
+      const p = dir.clone().normalize().multiplyScalar(dist).add(look);
       this.rig.set({
         position: [p.x, p.y, p.z],
-        target: [centre.x, centre.y, centre.z],
+        target: [look.x, look.y, look.z],
         fov,
         up: VIEW_UPS[view],
       });
