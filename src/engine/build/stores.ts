@@ -1,25 +1,31 @@
 import { DEG } from '../util/math';
 import { fillBox, fillFrame, fillLoftZ, makeFrame } from '../voxel/rasterize';
-import type { BayParams, StoreParams } from '../../aircraft/types';
+import type { BayParams, StoreParams, SurfaceParams } from '../../aircraft/types';
+import { wingChordZ } from './planform';
 import type { BuildCtx } from './ctx';
 
 /**
  * Pylons and the things that hang off them. Stores are their own part tags so
  * weapons mode can fly them onto the rails rather than rebuild the airframe.
  */
-export function buildStores(ctx: BuildCtx, stores: StoreParams[]): void {
+export function buildStores(
+  ctx: BuildCtx,
+  stores: StoreParams[],
+  wing?: SurfaceParams,
+): void {
   for (const s of stores) {
+    const z = s.chord !== undefined && wing ? wingChordZ(wing, s.at[0], s.chord) : s.at[2];
     for (const side of s.mirror ? ([1, -1] as const) : ([1] as const)) {
-      buildStore(ctx, s, side);
+      buildStore(ctx, s, side, z);
     }
   }
 }
 
-function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1): void {
+function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1, zAft: number): void {
   const { grid } = ctx;
   const cx = ctx.gx(s.at[0] * side);
   const cy = ctx.gy(s.at[1]);
-  const zMid = ctx.gzAft(s.at[2]);
+  const zMid = ctx.gzAft(zAft);
   const half = ctx.v(s.length) * 0.5;
   const r = Math.max(1, ctx.v(s.radius));
   const body = ctx.slot(s.palette, 'store');

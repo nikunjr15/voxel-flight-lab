@@ -142,7 +142,7 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
       opts.doorOpen === undefined ? g.bays : g.bays.map((b) => ({ ...b, doorOpen: opts.doorOpen })),
     );
   }
-  if (g.stores) buildStores(ctx, g.stores);
+  if (g.stores) buildStores(ctx, g.stores, g.wing);
   if (g.blocks) buildBlocks(ctx, g.blocks);
   if (g.markings) buildMarkings(ctx, g.markings, COUNTRIES[config.spec.country].marking, g.wing);
   if (g.lettering) buildLettering(ctx, g.lettering);

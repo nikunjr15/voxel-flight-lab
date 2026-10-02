@@ -167,7 +167,7 @@ export const MIG29: AircraftConfig = {
       seats: 1,
     },
     stores: [
-      { kind: 'rail', at: [5.56, 0.02, 12.1], length: 1.8, radius: 0.1, mirror: true },
+      { kind: 'rail', at: [5.56, 0.02, 0], chord: 0.5, length: 1.8, radius: 0.1, mirror: true },
     ],
     markings: {
       radius: 0.66,

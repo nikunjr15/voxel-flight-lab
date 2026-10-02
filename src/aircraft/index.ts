@@ -12,6 +12,11 @@ import { F16 } from './data/f16';
 import { SU27 } from './data/su27';
 import { MIG29 } from './data/mig29';
 import { MIRAGE2000 } from './data/mirage2000';
+import { RAFALE } from './data/rafale';
+import { GRIPEN } from './data/gripen';
+import { TYPHOON } from './data/typhoon';
+import { SU30MKI } from './data/su30mki';
+import { TEJAS } from './data/tejas';
 import type { AircraftConfig } from './types';
 
 /** Exhibit order. Chapter order follows this list. */
@@ -30,6 +35,11 @@ export const AIRCRAFT: AircraftConfig[] = [
   SU27,
   MIG29,
   MIRAGE2000,
+  RAFALE,
+  GRIPEN,
+  TYPHOON,
+  SU30MKI,
+  TEJAS,
 ];
 
 /**

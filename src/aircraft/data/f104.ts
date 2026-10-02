@@ -163,7 +163,8 @@ export const F104: AircraftConfig = {
     stores: [
       {
         kind: 'tank',
-        at: [3.32, 0.0, 8.6],
+        at: [3.32, 0.0, 0],
+        chord: 0.5,
         length: 3.2,
         radius: 0.24,
         mirror: true,

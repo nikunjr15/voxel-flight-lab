@@ -270,8 +270,14 @@ export type StoreKind = 'missile' | 'tank' | 'bomb' | 'rail';
 
 export interface StoreParams {
   kind: StoreKind;
-  /** Centre: x from the centreline, y above the waterline, z aft of the nose. */
+  /**
+   * Centre: x from the centreline, y above the waterline, z aft of the nose.
+   * On a swept wing give  instead of a meaningful z, or the store ends
+   * up well ahead of the surface it is supposed to hang from.
+   */
   at: [number, number, number];
+  /** Fore-aft position as a fraction of the local wing chord at station x. */
+  chord?: number;
   length: number;
   radius: number;
   mirror?: boolean;

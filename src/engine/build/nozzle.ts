@@ -73,6 +73,10 @@ function buildRoundNozzle(
   const z0 = Math.max(0, Math.floor(zExit));
   const z1 = Math.min(grid.sz - 1, Math.ceil(zExit + length));
   const inner = 0.74;
+  // Axisymmetric vectoring: the whole round nozzle swings, so the ring centre
+  // walks down as it approaches the exit rather than the petals flattening.
+  const deflect = Math.tan((p.vector ?? 0) * DEG);
+  const shiftAt = (z: number) => -deflect * (length - (z - zExit));
 
   // Clear whatever the fuselage left in the throat, so the exhaust reads as a
   // hole with a glow at the bottom rather than a dark plug.
@@ -80,21 +84,22 @@ function buildRoundNozzle(
     grid,
     zExit,
     zExit + length * 1.05,
-    () => ({ cx, cy, w: radius * inner, h: radius * inner, e: 2 }),
+    (z) => ({ cx, cy: cy + shiftAt(z), w: radius * inner, h: radius * inner, e: 2 }),
     { pal: 0, part: 0, mode: 'erase' },
   );
 
   for (let z = z0; z <= z1; z++) {
     const t = clamp((z - zExit) / Math.max(1e-6, length), 0, 1);
     const r = radius * (1 - 0.1 * (1 - t));
+    const cyz = cy + shiftAt(z);
     const x0 = Math.max(0, Math.floor(cx - r));
     const x1 = Math.min(grid.sx - 1, Math.ceil(cx + r));
-    const y0 = Math.max(0, Math.floor(cy - r));
-    const y1 = Math.min(grid.sy - 1, Math.ceil(cy + r));
+    const y0 = Math.max(0, Math.floor(cyz - r));
+    const y1 = Math.min(grid.sy - 1, Math.ceil(cyz + r));
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const dx = x - cx;
-        const dy = y - cy;
+        const dy = y - cyz;
         const d = Math.hypot(dx, dy);
         if (d > r || d < r * inner) continue;
         if (teeth > 0) {
@@ -120,7 +125,7 @@ function buildRoundNozzle(
     grid,
     zExit + toothDepth + deep,
     zExit + toothDepth + deep + 1.2,
-    () => ({ cx, cy, w: radius * 0.68, h: radius * 0.68, e: 2 }),
+    (z) => ({ cx, cy: cy + shiftAt(z), w: radius * 0.68, h: radius * 0.68, e: 2 }),
     { pal: exhaust, part },
   );
   // Pipe wall between the lip and the turbine face, so the recess has depth
@@ -129,7 +134,7 @@ function buildRoundNozzle(
     grid,
     zExit,
     zExit + toothDepth + deep,
-    () => ({ cx, cy, w: radius * 0.74, h: radius * 0.74, e: 2 }),
+    (z) => ({ cx, cy: cy + shiftAt(z), w: radius * 0.74, h: radius * 0.74, e: 2 }),
     { pal: ctx.pal.shade('nozzle', 0.55), part, shell: 0.78, mode: 'fill-empty' },
   );
 }

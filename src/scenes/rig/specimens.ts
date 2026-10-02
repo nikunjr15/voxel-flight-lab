@@ -441,6 +441,41 @@ export const SPECIMENS: RigSpecimen[] = [
       e: 2.6,
     }));
   }),
+  specimen('compound-delta', 'Compound delta', 'Leading-edge sweep changes part way out', (g) => {
+    g.wing = {
+      ...g.wing,
+      kind: 'cranked-delta',
+      span: 8.2,
+      rootChord: 5.6,
+      tipChord: 0.5,
+      sweep: 62,
+      atZ: 3.4,
+      kink: { at: 0.5, chord: 2.6, sweep: 42 },
+    };
+    g.tailH = undefined;
+  }),
+  specimen('canard-forward', 'Forward canard', 'Set well ahead of the wing, not close coupled', (g) => {
+    g.wing = { ...g.wing, span: 8.4, rootChord: 4.6, tipChord: 0.9, sweep: 53, atZ: 5.2 };
+    g.canard = {
+      span: 5.2,
+      rootOffset: 0.58,
+      rootChord: 1.5,
+      tipChord: 0.6,
+      sweep: 45,
+      dihedral: -2,
+      thickness: 0.14,
+      atZ: 2.6,
+      atY: 0.5,
+      roundTip: true,
+    };
+    g.tailH = undefined;
+  }),
+  specimen('tandem', 'Two-seat tandem canopy', 'Two seats under one long canopy', (g) => {
+    g.canopy = { ...g.canopy, fromZ: 2.1, toZ: 5.6, seats: 2, topY: 1.3 };
+  }),
+  specimen('vector-axi', 'Axisymmetric vectoring', 'Round nozzle swung as a whole', (g) => {
+    g.nozzle = { ...g.nozzle!, kind: 'round', radius: 0.52, length: 1.8, vector: 18 };
+  }),
   specimen('glyphs', 'Voxel glyph font', 'Serial painted with the in-code 3x5 font', (g) => {
     g.lettering = [
       { text: 'VFL-04', on: 'fuselage', atZ: 3.8, atY: 0.1, size: 0.1, palette: 'frame' },

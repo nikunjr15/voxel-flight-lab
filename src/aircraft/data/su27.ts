@@ -186,7 +186,7 @@ export const SU27: AircraftConfig = {
       seats: 1,
     },
     stores: [
-      { kind: 'rail', at: [7.16, 0.02, 15.5], length: 2.3, radius: 0.11, mirror: true },
+      { kind: 'rail', at: [7.16, 0.02, 0], chord: 0.5, length: 2.3, radius: 0.11, mirror: true },
     ],
     markings: {
       radius: 0.78,

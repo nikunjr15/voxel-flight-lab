@@ -196,6 +196,9 @@ export const F16: AircraftConfig = {
         mirror: true,
       },
     ],
+    stores: [
+      { kind: 'rail', at: [4.72, 0.02, 0], chord: 0.5, length: 2.4, radius: 0.13, mirror: true },
+    ],
     markings: {
       radius: 0.86,
       wing: { x: 2.8, chord: 0.4 },

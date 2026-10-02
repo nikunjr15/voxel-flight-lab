@@ -1,4 +1,4 @@
-import { DEG, lerp } from '../util/math';
+import { wingChordZ } from './planform';
 import { PART_INDEX, PartId } from '../voxel/parts';
 import { Mask, paintSide, paintTop } from './decals';
 import type { CountryMarking } from '../../aircraft/countries';
@@ -48,8 +48,12 @@ function maskFor(
       return (u, v) => {
         const d = Math.hypot(u, v);
         if (d > radius) return 0;
-        const band = Math.min(bands - 1, Math.floor((d / radius) * bands));
-        return pal[band];
+        // Colours are listed outermost first, so the innermost ring is the
+        // last entry. Indexing straight off the radius put the first colour
+        // in the centre and turned every roundel in the roster inside out:
+        // French roundels came out blue-centred, Indian ones green-centred.
+        const ring = Math.min(bands - 1, Math.floor((d / radius) * bands));
+        return pal[bands - 1 - ring];
       };
     }
 
@@ -93,13 +97,11 @@ function maskFor(
         if (Math.hypot(u, v) > discR) return 0;
         if (!withStar) {
           // Too small for a star, but a bare disc is unreadable as a US
-          // marking. A white cross through the disc keeps a device there.
-          const arm = discR * 0.82;
+          // marking. A single horizontal bar echoes the stars and bars; a
+          // cross would read as a medical or Greek cross instead.
+          const arm = discR * 0.84;
           const bar = Math.max(0.6, discR * 0.3);
-          const inCross =
-            (Math.abs(u) <= arm && Math.abs(v) <= bar) ||
-            (Math.abs(v) <= arm && Math.abs(u) <= bar);
-          return inCross ? white : blue;
+          return Math.abs(u) <= arm && Math.abs(v) <= bar ? white : blue;
         }
         return pointInPolygon(star, u, v) ? white : blue;
       };
@@ -135,45 +137,6 @@ const BODY_PARTS = new Set(
     (id) => PART_INDEX[id],
   ),
 );
-
-/**
- * Where a chord fraction lands, in metres aft of the nose, for a station `x`
- * metres outboard. Mirrors the planform maths the rasteriser uses, so a
- * marking placed at mid-chord really sits at mid-chord on a swept wing.
- */
-function wingChordZ(wing: SurfaceParams, x: number, frac: number): number {
-  const rootOffset = wing.rootOffset ?? 0;
-
-  // On a swing wing the base planform is not what is actually built, so a
-  // marking has to be placed against the fixed glove. Outboard of the pivot
-  // the panel moves with sweep and no fixed station exists.
-  if (wing.vg) {
-    const gloveSpan = Math.max(1e-6, wing.vg.pivotX - rootOffset);
-    const gs = Math.min(Math.max(Math.abs(x) - rootOffset, 0), gloveSpan);
-    const leRun = Math.tan(wing.vg.gloveSweep * DEG) * gloveSpan;
-    const tip = Math.max(0.6, wing.vg.gloveChord - leRun);
-    const le = Math.tan(wing.vg.gloveSweep * DEG) * gs;
-    const chordLen = lerp(wing.vg.gloveChord, tip, gs / gloveSpan);
-    return wing.atZ + le + frac * chordLen;
-  }
-
-  const half = Math.max(1e-6, wing.span / 2 - rootOffset);
-  const s = Math.min(Math.max(Math.abs(x) - rootOffset, 0), half);
-
-  let le: number;
-  let chord: number;
-  const kinkAt = wing.kink ? half * wing.kink.at : half;
-  if (wing.kink && s > kinkAt) {
-    le = Math.tan(wing.sweep * DEG) * kinkAt + Math.tan(wing.kink.sweep * DEG) * (s - kinkAt);
-    const t = (s - kinkAt) / Math.max(1e-6, half - kinkAt);
-    chord = lerp(wing.kink.chord, wing.tipChord, t);
-  } else {
-    le = Math.tan(wing.sweep * DEG) * s;
-    const end = wing.kink ? wing.kink.chord : wing.tipChord;
-    chord = lerp(wing.rootChord, end, kinkAt <= 0 ? 0 : s / kinkAt);
-  }
-  return wing.atZ + le + frac * chord;
-}
 
 export function buildMarkings(
   ctx: BuildCtx,

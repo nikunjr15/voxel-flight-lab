@@ -36,6 +36,9 @@ export const GALLERY_SETS: Record<string, string[]> = {
   '2c': ['f-4', 'mig-23', 'f-15', 'su-27', 'mig-29', 'mirage-2000', 'f-16'],
   era3: ['f-4', 'mig-23'],
   era4: ['f-15', 'f-16', 'su-27', 'mig-29', 'mirage-2000'],
+  '2d': ['rafale', 'gripen', 'typhoon', 'su-30mki', 'tejas'],
+  'compare-canards': ['rafale', 'typhoon', 'gripen'],
+  su30: ['su-27', 'su-30mki'],
   all: AIRCRAFT.map((a) => a.id),
 };
 
@@ -236,7 +239,9 @@ export class Gallery {
       // is only known now. Size each caption to its own slot rather than to a
       // fixed pixel width, or neighbours overlap as soon as the row is long.
       const edge = project(p.clone().setX(p.x + this.placed[i].slot / 2));
-      const width = Math.max(72, Math.abs(edge.x - s.x) * 2 - 8);
+      // 0.84 of the slot, not all of it: sized to the full slot, adjacent
+      // captions meet edge to edge and read as one line of text.
+      const width = Math.max(70, Math.abs(edge.x - s.x) * 2 * 0.84);
       el.style.width = `${width}px`;
       el.style.fontSize = width < 104 ? '0.9em' : '';
       el.style.transform = `translate(-50%, 0) translate(${s.x}px, ${s.y}px)`;
