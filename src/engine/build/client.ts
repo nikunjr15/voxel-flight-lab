@@ -76,6 +76,16 @@ export class BuildClient {
     }
   }
 
+  /** Resolves once the worker is loaded and answering; the loader counts on it. */
+  async ping(): Promise<void> {
+    if (!this.worker) return;
+    try {
+      await this.send({ id: ++this.seq, kind: 'ping' });
+    } catch {
+      // A dead worker falls back to building in place; ready either way.
+    }
+  }
+
   /** Plan-view mask for the evolution ribbon. */
   async silhouette(config: AircraftConfig): Promise<Silhouette> {
     if (!this.worker) return silhouette(config);

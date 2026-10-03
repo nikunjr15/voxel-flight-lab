@@ -60,7 +60,11 @@ export class Chrome {
     // Touch screens swipe rather than scroll.
     const coarse = window.matchMedia('(pointer: coarse)');
     const hint = q(root, '[data-field="scroll-verb"]');
-    const setHint = () => (hint.textContent = coarse.matches ? 'Swipe' : 'Scroll');
+    const egg = q(root, '[data-field="egg"]');
+    const setHint = () => {
+      hint.textContent = coarse.matches ? 'Swipe' : 'Scroll';
+      egg.textContent = coarse.matches ? 'Psst — hold the gizmo.' : 'Psst — hold Space.';
+    };
     coarse.addEventListener('change', setHint);
     setHint();
   }
@@ -84,6 +88,18 @@ export class Chrome {
   setIntro(v: number): void {
     this.root.style.setProperty('--intro', v.toFixed(3));
     this.root.classList.toggle('is-intro', v > 0.5);
+  }
+
+  /**
+   * Compare swaps the placard and notes for the compare panels. View modes
+   * and thrust belong to a single aircraft, so they are switched off there;
+   * orbit and sound still work.
+   */
+  setCompare(on: boolean): void {
+    this.root.classList.toggle('is-compare', on);
+    for (const b of this.root.querySelectorAll<HTMLButtonElement>('[data-mode], [data-toggle="thrust"]')) {
+      b.disabled = on;
+    }
   }
 
   setBlocks(n: number): void {

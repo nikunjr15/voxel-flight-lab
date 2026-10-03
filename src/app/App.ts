@@ -11,7 +11,7 @@ import { Rig } from '../scenes/rig/Rig';
 import { Gallery, GALLERY_SETS } from '../scenes/rig/Gallery';
 import { PARTS } from '../engine/voxel/parts';
 import { CameraRig, CameraPreset } from '../scenes/CameraRig';
-import { AIRCRAFT, byChapter, byId, chapterInfo, hasJets } from '../aircraft';
+import { AIRCRAFT, byChapter, byId, chapterInfo, hasJets, SUGGESTED_PAIRS } from '../aircraft';
 import type { AircraftConfig } from '../aircraft/types';
 import { DevStats } from '../ui/devstats';
 import { Chrome } from '../ui/Chrome';
@@ -22,8 +22,14 @@ import { RadarView } from '../scenes/RadarView';
 import { radarCards } from '../ui/modeCopy';
 import type { AssembleOptions, AssembleResult } from '../engine/build/assemble';
 import { BuildCache } from './BuildCache';
+import { JetAudio, voiceFor } from '../engine/audio/JetAudio';
+import { session } from './session';
+import type { LoadTask } from '../ui/Loader';
 import { Chapters } from '../ui/Chapters';
 import { Ribbon } from '../ui/Ribbon';
+import { CompareScene, type CompareLayout } from '../scenes/CompareScene';
+import { ComparePanel } from '../ui/ComparePanel';
+import { VapourCone } from '../engine/particles/Particles';
 
 /** `?rig=1` swaps the exhibit for the primitive test bench. Review builds only. */
 const RIG_MODE = __REVIEW__ && new URLSearchParams(location.search).get('rig') === '1';
@@ -110,6 +116,8 @@ const PLAN_FOV = 30;
 interface Route {
   ch: number;
   id: string | null;
+  /** Compare only: the two aircraft on the turntable. */
+  pair?: [string, string];
 }
 
 /**
@@ -122,12 +130,32 @@ function parseRoute(hash: string): Route | null {
   if (!m) return null;
   const ch = Number(m[1]);
   if (!chapterInfo(ch)) return null;
-  const c = m[2] ? byId(m[2].toLowerCase()) : undefined;
+  const tail = m[2]?.toLowerCase();
+  if (ch === 8 && tail) {
+    // `#ch8/gnat-vs-f-86`. Aircraft ids contain hyphens, never "-vs-".
+    const [a, b] = tail.split('-vs-');
+    if (a && b && a !== b && byId(a) && byId(b)) return { ch, id: null, pair: [a, b] };
+    return { ch, id: null };
+  }
+  const c = tail ? byId(tail) : undefined;
   if (c && hasJets(ch)) return { ch: c.chapter, id: c.id };
   return { ch, id: null };
 }
 
-const routeHash = (r: Route): string => `#ch${r.ch}${r.id && hasJets(r.ch) ? `/${r.id}` : ''}`;
+const routeHash = (r: Route): string => {
+  if (r.ch === 8 && r.pair) return `#ch8/${r.pair[0]}-vs-${r.pair[1]}`;
+  return `#ch${r.ch}${r.id && hasJets(r.ch) ? `/${r.id}` : ''}`;
+};
+
+/** The pair Compare opens on: the first suggestion, the Gnat and the Sabre. */
+const DEFAULT_PAIR: [string, string] = [SUGGESTED_PAIRS[0].a, SUGGESTED_PAIRS[0].b];
+
+/**
+ * How a pair stands on a phone. `?compare=side|stack` overrides, so both can
+ * be reviewed; wide screens are always side by side.
+ */
+const PHONE_COMPARE: CompareLayout =
+  (new URLSearchParams(location.search).get('compare') as CompareLayout | null) ?? 'stack';
 
 /**
  * The aircraft a chapter opens on when nothing else has been picked there.
@@ -144,6 +172,9 @@ type Transition = 'initial' | 'morph' | 'fade' | 'cut';
  * way, it reads as an airframe coming apart.
  */
 const COVER_SCATTER = 0.3;
+
+/** How far the hangar turntable sways either way, radians. */
+const COMPARE_SWAY = 0.42;
 
 /** Outgoing airframe during a morph, until its voxels have scattered away. */
 interface Leaving {
@@ -184,6 +215,7 @@ export class App {
 
   private model: VoxelModel | null = null;
   private readonly cache = new BuildCache();
+  readonly audio = new JetAudio();
   private readonly leaving: Leaving[] = [];
   private chapters: Chapters | null = null;
   private ribbon: Ribbon | null = null;
@@ -196,6 +228,17 @@ export class App {
   /** Scroll progress through the introduction: 0 at the top of the page. */
   private coverProgress = 1;
   private historyTimer = 0;
+  private compare: CompareScene | null = null;
+  private comparePanel: ComparePanel | null = null;
+  private compareOn = false;
+  private comparePair: [string, string] = DEFAULT_PAIR;
+  private readonly compareLabels: HTMLElement[] = [];
+  private vapour: VapourCone | null = null;
+  private flyTl: gsap.core.Timeline | null = null;
+  private flying = false;
+  private spaceTimer = 0;
+  private spaceShift = false;
+  private swallowClick = false;
   private prefetchTimer = 0;
   private bench: Rig | null = null;
   private gallery: Gallery | null = null;
@@ -207,7 +250,10 @@ export class App {
   private lastTime = 0;
   private running = false;
 
-  constructor(canvas: HTMLCanvasElement) {
+  private readonly onProgress: (task: LoadTask, v: number) => void;
+
+  constructor(canvas: HTMLCanvasElement, opts: { onProgress?: (task: LoadTask, v: number) => void } = {}) {
+    this.onProgress = opts.onProgress ?? (() => {});
     // A phone renders at 1.5x at most: past that the MSAA target costs more
     // fill than the eye gets back at that size.
     const phone = (window.innerWidth || 1280) < 760;
@@ -289,13 +335,16 @@ export class App {
     );
     for (let ch = 1; ch <= 7; ch++) this.remembered.set(ch, firstOf(ch).id);
     if (route.id) this.remembered.set(route.ch, route.id);
+    if (route.pair) this.comparePair = route.pair;
+    this.setupCompare();
     this.ribbon?.setCurrent(this.config.id, this.config.chapter);
 
     // Scroll positions are this page's to restore, from the address.
     history.scrollRestoration = 'manual';
     history.replaceState(null, '', this.urlFor(route));
     const land = () => {
-      if (route.ch !== 0 || route.id) this.chapters?.jumpTo(route.ch, route.id ? 'exhibit' : 'intro');
+      // An aircraft or a pair in the link means the exhibit, not the chapter text.
+      if (route.ch !== 0 || route.id) this.chapters?.jumpTo(route.ch, route.id || route.pair ? 'exhibit' : 'intro');
       else window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     };
     land();
@@ -463,6 +512,7 @@ export class App {
    * stays centred on narrow ones. A hard-coded camera position cannot do both.
    */
   private heroPreset(): CameraPreset {
+    if (this.compareOn) return this.comparePreset();
     const size = this.model?.size ?? new Vector3(15, 5, 15);
     const radius = Math.max(size.x, size.y, size.z) * 0.5;
     const aspect = this.stage.camera.aspect || 1;
@@ -529,6 +579,7 @@ export class App {
     window.addEventListener('resize', this.resize);
     window.addEventListener('pointermove', this.onPointerMove, { passive: true });
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
 
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     motion.addEventListener('change', (e) => {
@@ -548,7 +599,35 @@ export class App {
       if (this.store.get('radar')) this.store.set('radar', false);
       this.modes?.setMode(mode);
     });
-    this.store.on('thrust', (on) => this.modes?.setThrust(on));
+    this.store.on('thrust', (on) => {
+      this.modes?.setThrust(on);
+      this.audio.setThrust(on);
+    });
+    // Sound follows the chip. A click is a user gesture, so starting the
+    // audio context from inside this listener is allowed.
+    this.store.on('sound', (on) => {
+      session.set('sound', on ? '1' : '0');
+      if (!on) this.audio.stop();
+      else if (navigator.userActivation?.hasBeenActive ?? true) this.audio.start();
+    });
+    // Sound chosen earlier in the session: the store says on, but browsers
+    // still need a gesture on this page before audio may play, so the engine
+    // starts with the visitor's first click or key.
+    if (session.get('sound') === '1') {
+      this.store.set('sound', true);
+      const unlock = () => {
+        window.removeEventListener('pointerdown', unlock, true);
+        window.removeEventListener('keydown', unlock, true);
+        if (this.store.get('sound')) this.audio.start();
+      };
+      window.addEventListener('pointerdown', unlock, true);
+      window.addEventListener('keydown', unlock, true);
+    }
+    // A quiet tick under every toolbar press.
+    document.querySelector('[data-mount="toolbar"]')?.addEventListener('click', (e) => {
+      if ((e.target as Element).closest('button')) this.audio.tick();
+    });
+    if (__REVIEW__) (window as unknown as { __audio: JetAudio }).__audio = this.audio;
     this.store.on('xray', (v) => this.modes?.setXray(v));
     this.store.on('sweep', () => this.scheduleSweep());
     this.store.on('radar', (on) => void this.setRadar(on));
@@ -634,6 +713,8 @@ export class App {
     const c = byId(id);
     if (!c) return;
     this.remembered.set(c.chapter, c.id);
+    this.endFlyby();
+    if (this.compareOn && source !== 'scroll') this.exitCompare(c === this.config);
     if (source === 'pick' || source === 'key') {
       // Land on the exhibit run, so the placard is not under chapter text.
       if (this.chapter !== c.chapter || this.introCover > 0.5) {
@@ -657,9 +738,9 @@ export class App {
     const info = chapterInfo(n);
     if (info) this.chrome?.setChapter(info);
     if (n === 8) {
-      // Compare has no aircraft of its own: whatever is on show stays.
-      if (changed) this.resetView();
+      this.enterCompare();
     } else {
+      if (this.compareOn) this.exitCompare(true);
       const id = hasJets(n) ? (this.remembered.get(n) ?? firstOf(n).id) : firstOf(n).id;
       if (id !== this.config.id) this.navigate(id, 'scroll');
       else if (changed) this.resetView();
@@ -696,20 +777,332 @@ export class App {
     const yMin = tools ? ny(tools.top - 8) : -1;
     if (W >= 760 && W / H > 1.25) {
       // The text column: the placard, or chapter text, whichever is wider.
-      const title = rect('.chrome__main');
+      const title = rect(this.compareOn ? '.compare-head' : '.chrome__main');
       const inner = rect('.chapter__inner');
       const right = Math.max(title?.right ?? 0, inner ? inner.left + inner.width : 0) + 24;
       setMorphBounds(nx(right), 9, yMin, yMax);
       // The note cards run further right than the title, along the bottom.
-      const notes = rect('.chrome__notes');
+      const notes = rect(this.compareOn ? '.compare-stats' : '.chrome__notes');
       if (notes && notes.width > 0) setMorphAvoid(nx(notes.right + 16), ny(notes.top - 12));
       else setMorphAvoid(-9, -9);
     } else {
       setMorphAvoid(-9, -9);
-      const title = rect('.chrome__main');
-      const notes = rect('.chrome__notes');
+      const title = rect(this.compareOn ? '.compare-head' : '.chrome__main');
+      const notes = rect(this.compareOn ? '.compare-stats' : '.chrome__notes');
       setMorphBounds(-9, 9, notes ? ny(notes.top - 8) : yMin, title ? ny(title.bottom + 8) : yMax);
     }
+  }
+
+  /**
+   * The loader's choice. Runs inside the button's click, which is the user
+   * gesture the browser needs before audio may start.
+   */
+  enter(sound: boolean): void {
+    session.set('entered', '1');
+    this.store.set('sound', sound);
+  }
+
+  private setupCompare(): void {
+    const root = this.chrome?.root;
+    if (!root) return;
+    this.compare = new CompareScene(this.cache, {
+      reduced: () => this.reduced,
+      density: () => densityForViewport(),
+      onLeave: () => this.audio.whoosh(),
+    });
+    this.pivot.add(this.compare.group);
+    this.comparePanel = new ComparePanel(root, (a, b) => this.setPair(a, b));
+    this.vapour = new VapourCone(this.pivot);
+    this.setupLongPress(root.querySelector<HTMLElement>('.inspect'));
+    for (const slot of ['a', 'b']) {
+      const el = document.createElement('span');
+      el.className = `compare-label compare-label--${slot}`;
+      el.setAttribute('aria-hidden', 'true');
+      el.hidden = true;
+      root.appendChild(el);
+      this.compareLabels.push(el);
+    }
+  }
+
+  /**
+   * The phone way to the easter egg: hold the gizmo. The click that would
+   * follow the hold -- and toggle free orbit -- is swallowed.
+   */
+  private setupLongPress(g: HTMLElement | null): void {
+    if (!g) return;
+    let timer = 0;
+    const cancel = () => {
+      window.clearTimeout(timer);
+      timer = 0;
+    };
+    g.addEventListener('pointerdown', () => {
+      cancel();
+      timer = window.setTimeout(() => {
+        timer = 0;
+        this.swallowClick = true;
+        this.flyby();
+      }, 600);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) g.addEventListener(ev, cancel);
+    g.addEventListener(
+      'click',
+      (e) => {
+        if (!this.swallowClick) return;
+        this.swallowClick = false;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      },
+      true,
+    );
+    g.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  /**
+   * The easter egg: full afterburner, a pass across the screen with a vapour
+   * cone, and a boom if sound is on. The jet turns to face screen-right,
+   * accelerates out of frame, comes back flat out from the left a little
+   * closer, and then re-forms on the turntable out of its voxel cloud. With
+   * reduced motion it is a calm, slower pass: no shake, no boom.
+   */
+  private flyby(): void {
+    const model = this.model;
+    const vapour = this.vapour;
+    if (this.flying || !model || !vapour || this.compareOn || !this.chrome) return;
+    if (this.store.get('orbit') || this.store.get('radar')) return;
+    if (this.store.get('mode') !== 'overview') this.store.set('mode', 'overview');
+    this.flying = true;
+    this.idle = false;
+    const reduced = this.reduced;
+    const cam = this.stage.camera;
+    const dist = cam.position.length();
+    const vFov = (cam.fov * Math.PI) / 180;
+    const halfW = dist * Math.tan(vFov / 2) * cam.aspect;
+    const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0).setY(0).normalize();
+    const near = cam.position.clone().setY(0).normalize().multiplyScalar(dist * 0.2);
+    const yaw = Math.atan2(right.x, right.z);
+    const size = model.size;
+    vapour.setShape(size.z, size.x);
+    const p = this.pivot;
+    const at = (k: number, y: number, n = 0) => ({ x: right.x * halfW * k + near.x * n, y, z: right.z * halfW * k + near.z * n });
+
+    this.store.set('thrust', true);
+    const tl = gsap.timeline();
+    this.flyTl = tl;
+    tl.to(p.rotation, { y: yaw, x: 0, z: 0, duration: reduced ? 0.7 : 0.45, ease: 'power2.inOut' });
+    if (!reduced) {
+      // Out of frame to the right, accelerating hard.
+      tl.to(p.position, { ...at(1.75, 0.5), duration: 0.75, ease: 'power3.in' });
+      // The pass: in from the left, nearer the camera, slightly banked.
+      tl.set(p.position, at(-1.85, 1.1, 1));
+      tl.set(p.rotation, { z: -0.12 });
+      tl.addLabel('pass');
+      tl.to(p.position, { ...at(1.85, 0.3, 1), duration: 1.05, ease: 'none' }, 'pass');
+      tl.to(vapour, { level: 1, duration: 0.28, ease: 'power2.out' }, 'pass+=0.26');
+      tl.call(
+        () => {
+          this.audio.boom();
+          this.rig.setShake(2.4);
+        },
+        [],
+        'pass+=0.44',
+      );
+      tl.call(() => this.rig.setShake(this.store.get('thrust') ? 1 : 0), [], 'pass+=0.8');
+      tl.to(vapour, { level: 0, duration: 0.3 }, 'pass+=0.72');
+      tl.addLabel('home', 'pass+=1.1');
+    } else {
+      // Calm: fade out, cross slowly with a light cone, fade out again.
+      const f = { v: 1 };
+      tl.to(f, { v: 0, duration: 0.35, onUpdate: () => model.setFade(f.v) });
+      tl.set(p.position, at(-1.6, 0.6, 0.5));
+      tl.to(f, { v: 1, duration: 0.35, onUpdate: () => model.setFade(f.v) });
+      tl.addLabel('pass', '<');
+      tl.to(p.position, { ...at(1.6, 0.6, 0.5), duration: 3.2, ease: 'sine.inOut' }, 'pass');
+      tl.to(vapour, { level: 0.45, duration: 0.8 }, 'pass+=0.9');
+      tl.to(vapour, { level: 0, duration: 0.8 }, 'pass+=1.9');
+      tl.to(f, { v: 0, duration: 0.35, onUpdate: () => model.setFade(f.v) }, 'pass+=2.85');
+      tl.addLabel('home', 'pass+=3.25');
+    }
+    tl.call(() => this.landFlyby(model), [], 'home');
+  }
+
+  /** Back on the turntable: the airframe re-forms where it started. */
+  private landFlyby(model: VoxelModel): void {
+    this.endFlyby();
+    if (this.model !== model) return;
+    if (this.reduced) {
+      const f = { v: 0 };
+      model.setFade(0);
+      gsap.to(f, { v: 1, duration: 0.5, onUpdate: () => model.setFade(f.v) });
+    } else {
+      model.setMorph(1.3);
+      gsap.to(model.uniforms.uMorph, { value: 0, duration: 1.1, ease: 'power3.out', onComplete: () => this.applyCover() });
+    }
+  }
+
+  /** Stops a flyby where it is and puts the turntable back. */
+  private endFlyby(): void {
+    if (!this.flying) return;
+    this.flyTl?.kill();
+    this.flyTl = null;
+    this.flying = false;
+    this.pivot.position.set(0, 0, 0);
+    this.pivot.rotation.set(0, this.spin, 0);
+    if (this.vapour) this.vapour.level = 0;
+    this.model?.setFade(1);
+    this.store.set('thrust', false);
+    this.idle = this.store.get('mode') === 'overview' && !this.store.get('orbit') && !this.reduced;
+  }
+
+  private compareLayout(): CompareLayout {
+    return window.innerWidth < 760 ? PHONE_COMPARE : 'side';
+  }
+
+  /**
+   * Into the hangar: the single airframe scatters away (kept, not thrown out,
+   * for the way back) and the pair gathers on the turntable.
+   */
+  private enterCompare(): void {
+    const scene = this.compare;
+    if (!scene || this.compareOn) return;
+    this.endFlyby();
+    this.compareOn = true;
+    this.resetView();
+    this.modes?.setSuppressed(true);
+    this.chrome?.setCompare(true);
+    this.stow();
+    scene.setLayout(this.compareLayout());
+    void this.showPair();
+  }
+
+  /**
+   * Out of the hangar. `restore` brings the stowed airframe back; a move
+   * straight to another aircraft skips that, as its own morph replaces it.
+   */
+  private exitCompare(restore: boolean): void {
+    if (!this.compareOn) return;
+    this.compareOn = false;
+    this.compare?.hide();
+    for (const l of this.compareLabels) l.hidden = true;
+    this.chrome?.setCompare(false);
+    this.modes?.setSuppressed(false);
+    if (this.model) this.chrome?.setBlocks(this.model.info.surfaceVoxels);
+    if (restore) this.unstow();
+    this.audio.setVoice(voiceFor(this.config));
+    this.modes?.reframe(1.2);
+    this.scheduleMorphBounds();
+  }
+
+  private async showPair(): Promise<void> {
+    const scene = this.compare;
+    const [ia, ib] = this.comparePair;
+    const a = byId(ia);
+    const b = byId(ib);
+    if (!scene || !a || !b) return;
+    this.comparePanel?.show(a, b);
+    this.audio.setVoice(voiceFor(a));
+    await scene.show(a, b);
+    if (!this.compareOn) return;
+    this.chrome?.setBlocks(scene.blocks);
+    this.idle = !this.reduced;
+    this.rig.setParallax(false);
+    this.rig.apply(this.comparePreset(), 1.2);
+    this.scheduleMorphBounds();
+  }
+
+  /** A new pair from the pickers or a suggestion chip. */
+  private setPair(a: string, b: string, source: 'pick' | 'history' = 'pick'): void {
+    if (a === b || (a === this.comparePair[0] && b === this.comparePair[1])) return;
+    this.comparePair = [a, b];
+    if (this.compareOn) void this.showPair();
+    if (source !== 'history') this.scheduleHistory();
+  }
+
+  /** The single airframe leaves for the hangar, but stays built. */
+  private stow(): void {
+    const model = this.model;
+    const shade = this.shadow?.material as MeshBasicMaterial | undefined;
+    if (!model) return;
+    this.audio.whoosh();
+    gsap.killTweensOf(model.uniforms.uMorph);
+    if (shade) gsap.to(shade, { opacity: 0, duration: 0.45 });
+    const hide = () => {
+      if (this.compareOn && this.model === model) model.group.visible = false;
+    };
+    if (this.reduced) {
+      const f = { v: model.uniforms.uFade.value };
+      gsap.to(f, { v: 0, duration: 0.4, onUpdate: () => model.setFade(f.v), onComplete: hide });
+    } else {
+      gsap.to(model.uniforms.uMorph, { value: 1.3, duration: 0.8, ease: 'power2.in', onComplete: hide });
+    }
+  }
+
+  private unstow(): void {
+    const model = this.model;
+    const shade = this.shadow?.material as MeshBasicMaterial | undefined;
+    if (!model) return;
+    model.group.visible = true;
+    gsap.killTweensOf(model.uniforms.uMorph);
+    if (shade) gsap.to(shade, { opacity: 1, duration: 0.8, delay: 0.4 });
+    if (this.reduced) {
+      const f = { v: model.uniforms.uFade.value };
+      gsap.to(f, { v: 1, duration: 0.5, delay: 0.15, onUpdate: () => model.setFade(f.v) });
+    } else {
+      gsap.to(model.uniforms.uMorph, { value: 0, duration: 1.15, delay: 0.28, ease: 'power3.out', onComplete: () => this.applyCover() });
+    }
+  }
+
+  /**
+   * Fits the pair into the part of the screen the compare panels leave free,
+   * from a direction that suits the layout, allowing for the turntable's
+   * sway so neither aircraft swings out of frame.
+   */
+  private comparePreset(): CameraPreset {
+    const scene = this.compare;
+    const W = window.innerWidth || 1;
+    const H = window.innerHeight || 1;
+    const rect = (sel: string): DOMRect | null => document.querySelector(sel)?.getBoundingClientRect() ?? null;
+    const head = rect('.compare-head');
+    const stats = rect('.compare-stats');
+    const top = rect('.chrome__top');
+    const tools = rect('.chrome__tools');
+    const wide = W >= 760 && W / H > 1.25;
+    let l = 24;
+    let r = W - 24;
+    let t = (top?.bottom ?? 80) + 8;
+    let b = (tools?.top ?? H - 120) - 8;
+    if (wide) l = Math.max(head?.right ?? 0, stats?.right ?? 0) + 32;
+    else {
+      t = (head?.bottom ?? t) + 8;
+      b = Math.min(b, (stats?.top ?? b) - 8);
+    }
+    const stack = scene?.layout === 'stack';
+    const size = (scene?.size ?? new Vector3(20, 5, 20)).clone();
+    // Widen the box for the sway: the pair turns up to SWAY either way.
+    const sway = this.reduced ? 0 : wide ? COMPARE_SWAY : COMPARE_SWAY * 0.4;
+    const c = Math.cos(sway);
+    const sn = Math.sin(sway);
+    const sx = size.x * c + size.z * sn;
+    const sz = size.x * sn + size.z * c;
+    size.set(sx, size.y, sz);
+    const dir = (stack ? new Vector3(0.18, 1.15, 0.72) : new Vector3(0.42, 0.36, 1)).normalize();
+    const fov = 30;
+    const aspect = W / H;
+    const vFovFull = (fov * Math.PI) / 180;
+    const hFovFull = 2 * Math.atan(Math.tan(vFovFull / 2) * aspect);
+    const hFov = 2 * Math.atan(Math.tan(hFovFull / 2) * Math.max(0.2, (r - l) / W));
+    const vFov = 2 * Math.atan(Math.tan(vFovFull / 2) * Math.max(0.2, (b - t) / H));
+    const dist = fitDistance(size, dir, undefined, hFov, vFov) * 1.06;
+    // Put the pair's centre on the centre of the free area.
+    const cx = ((l + r) / 2 / W) * 2 - 1;
+    const cy = 1 - ((t + b) / 2 / H) * 2;
+    const forward = dir.clone().negate();
+    const right = new Vector3().crossVectors(forward, new Vector3(0, 1, 0)).normalize();
+    const camUp = new Vector3().crossVectors(right, forward).normalize();
+    const target = right
+      .multiplyScalar(-cx * dist * Math.tan(hFovFull / 2))
+      .add(camUp.multiplyScalar(-cy * dist * Math.tan(vFovFull / 2)));
+    const pos = dir.clone().multiplyScalar(dist).add(target);
+    return { position: [pos.x, pos.y, pos.z], target: [target.x, target.y, target.z], fov };
   }
 
   /** Back to the overview: changing aircraft or chapter starts from the top. */
@@ -722,6 +1115,7 @@ export class App {
   }
 
   private currentRoute(): Route {
+    if (this.chapter === 8) return { ch: 8, id: null, pair: this.comparePair };
     return { ch: Math.max(0, this.chapter), id: hasJets(this.chapter) ? this.config.id : null };
   }
 
@@ -750,7 +1144,12 @@ export class App {
   /** Back and forward: go where the address says, without adding an entry. */
   private readonly onPopState = (): void => {
     window.clearTimeout(this.historyTimer);
-    const route = parseRoute(location.hash) ?? { ch: 0, id: null };
+    const route: Route = parseRoute(location.hash) ?? { ch: 0, id: null };
+    if (route.ch === 8) {
+      if (route.pair) this.setPair(route.pair[0], route.pair[1], 'history');
+      if (this.chapter !== 8) this.chapters?.jumpTo(8, 'exhibit');
+      return;
+    }
     const id = route.id ?? (hasJets(route.ch) ? (this.remembered.get(route.ch) ?? firstOf(route.ch).id) : null);
     this.chapter = route.ch;
     if (route.ch === 0 && !route.id) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
@@ -794,18 +1193,24 @@ export class App {
       }
       const unique = [...new Set(list.filter((x): x is AircraftConfig => !!x && x !== c))];
       void this.cache.prefetch(unique, (x) => this.buildOpts(x));
+      // Next door to Compare: build the pair it will open on.
+      const pa = byId(this.comparePair[0]);
+      const pb = byId(this.comparePair[1]);
+      if (c.chapter === 7 && pa && pb) void this.compare?.prefetch(pa, pb);
     }, 1300);
   }
 
   /** Plan-view masks for the ribbon, one at a time behind the real builds. */
   private async buildSilhouettes(): Promise<void> {
     if (!this.ribbon) return;
+    let n = 0;
     for (const c of AIRCRAFT) {
       try {
         this.ribbon.setMask(await buildClient.silhouette(c));
       } catch {
         // An icon that fails to build stays blank; the name is still there.
       }
+      this.onProgress('masks', ++n / AIRCRAFT.length);
     }
   }
 
@@ -837,6 +1242,11 @@ export class App {
         void this.setRadar(true);
         return;
       }
+      if (this.compareOn && this.compare) {
+        this.compare.setLayout(this.compareLayout());
+        this.rig.apply(this.comparePreset(), 0.6);
+        return;
+      }
       this.modes?.reframe(0.6);
     }, 160);
   };
@@ -847,6 +1257,18 @@ export class App {
     this.rig.setPointer(x, y);
   };
 
+  private readonly onKeyUp = (e: KeyboardEvent): void => {
+    if (e.code !== 'Space' || !this.spaceTimer) return;
+    const tapped = this.spaceTimer > 0;
+    window.clearTimeout(this.spaceTimer);
+    this.spaceTimer = 0;
+    if (tapped) {
+      // What Space would have done had we not held on to it: page down, or
+      // up with Shift.
+      window.scrollBy({ top: (this.spaceShift ? -1 : 1) * window.innerHeight * 0.85, behavior: this.reduced ? 'auto' : 'smooth' });
+    }
+  };
+
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     // A focused slider or field owns its keys: the arrows move the wing
@@ -854,6 +1276,19 @@ export class App {
     if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
     if (e.key === 'f' || e.key === 'F') this.stats.toggle();
     if (!this.chrome) return;
+    if (e.code === 'Space') {
+      // Space on a control is that control's: a button presses, a slider moves.
+      if (e.target instanceof Element && e.target.closest('button, a, [role="slider"], [role="option"]')) return;
+      // Held, it is the easter egg; tapped, it pages down as usual (on keyup).
+      e.preventDefault();
+      if (e.repeat || this.spaceTimer) return;
+      this.spaceShift = e.shiftKey;
+      this.spaceTimer = window.setTimeout(() => {
+        this.spaceTimer = -1;
+        this.flyby();
+      }, 380);
+      return;
+    }
     if (e.key === 'Escape') {
       this.store.set('orbit', false);
       this.store.set('radar', false);
@@ -862,7 +1297,7 @@ export class App {
       return;
     }
     const n = Number(e.key);
-    if (Number.isInteger(n) && n >= 1 && n <= MODES.length) {
+    if (!this.compareOn && Number.isInteger(n) && n >= 1 && n <= MODES.length) {
       this.store.set('mode', MODES[n - 1].id);
       return;
     }
@@ -917,6 +1352,7 @@ export class App {
     this.shadow = shadow;
     this.voxelsPerMetre = 1 / data.voxelSize;
     this.modes?.attach(model, config, data);
+    this.audio.setVoice(voiceFor(config));
 
     if (prev) this.retire(prev, how);
     this.arrive(model, shadow, how);
@@ -925,6 +1361,7 @@ export class App {
       this.prefetchAround(config);
     }
     this.stats.task(`present ${config.id}`, performance.now() - t0);
+    if (how === 'initial') this.onProgress('build', 1);
     this.scheduleMorphBounds();
 
     this.chrome?.setBlocks(data.total);
@@ -948,6 +1385,13 @@ export class App {
   private arrive(model: VoxelModel, shadow: Mesh, how: Transition): void {
     const shade = shadow.material as MeshBasicMaterial;
     if (how === 'cut') return;
+    // A build that lands while the hangar is up arrives already stowed.
+    if (this.compareOn) {
+      model.setMorph(1.3);
+      model.group.visible = false;
+      shade.opacity = 0;
+      return;
+    }
     if (how === 'fade' || (how === 'initial' && this.reduced)) {
       const fade = { v: 0 };
       model.setFade(0);
@@ -988,6 +1432,7 @@ export class App {
     model.group.visible = true;
     gsap.killTweensOf(model.uniforms.uMorph);
     this.leaving.push(prev);
+    this.audio.whoosh();
     // Two on the way out is plenty; a third means the visitor is racing.
     while (this.leaving.length > 2) this.drop(this.leaving[0]);
 
@@ -1041,14 +1486,23 @@ export class App {
 
     this.clouds.update(t);
 
-    if (this.idle && !this.reduced) {
+    if (this.compareOn && this.idle && !this.reduced && !this.store.get('orbit')) {
+      // The hangar turntable sways rather than spins: a full turn would put
+      // one aircraft behind the other half the time.
+      const amp = window.innerWidth >= 760 ? COMPARE_SWAY : COMPARE_SWAY * 0.4;
+      this.spin = Math.sin(t * 0.32) * amp;
+      this.pivot.rotation.y = this.spin;
+      this.pivot.position.y *= 0.95;
+      this.pivot.rotation.x *= 0.95;
+      this.pivot.rotation.z *= 0.95;
+    } else if (this.idle && !this.reduced) {
       this.spin += dt * 0.12;
       this.pivot.rotation.y = this.spin;
       // Gentle bob and roll, as if trimmed out in level flight.
       this.pivot.position.y = Math.sin(t * 0.55) * 0.13;
       this.pivot.rotation.z = Math.sin(t * 0.37) * 0.018;
       this.pivot.rotation.x = Math.sin(t * 0.29) * 0.012;
-    } else if (this.chrome && !this.store.get('orbit')) {
+    } else if (this.chrome && !this.store.get('orbit') && !this.flying) {
       // Settle square to the camera, the short way round. Nothing snaps.
       const home = Math.round(this.spin / (Math.PI * 2)) * Math.PI * 2;
       const k = 1 - Math.exp(-dt * 4);
@@ -1060,6 +1514,7 @@ export class App {
     }
 
     this.modes?.update(dt);
+    this.vapour?.update(dt);
     if (this.radar) {
       const { width, height } = this.stage.size;
       this.radar.update(dt, this.stage.camera, width, height);
@@ -1069,6 +1524,7 @@ export class App {
     this.stage.render(t);
     this.stats.endGpu();
     this.chrome?.update(this.stage.camera, this.pivot);
+    if (this.compareOn && this.compare) this.placeCompareLabels();
 
     const overlay = this.bench ?? this.gallery;
     if (overlay) {
@@ -1088,13 +1544,38 @@ export class App {
     requestAnimationFrame(this.frame);
   };
 
+  /** "A" and "B" tags under each aircraft, so the bars can be matched to them. */
+  private placeCompareLabels(): void {
+    const scene = this.compare;
+    const pair = scene?.pair;
+    if (!scene || !pair) return;
+    const { width, height } = this.stage.size;
+    const v = new Vector3();
+    scene.anchors().forEach((a, i) => {
+      const el = this.compareLabels[i];
+      if (!el) return;
+      v.copy(a);
+      scene.group.localToWorld(v);
+      v.project(this.stage.camera);
+      el.hidden = v.z > 1;
+      el.textContent = `${i === 0 ? 'A' : 'B'} · ${pair[i].designation}`;
+      const centred = scene.layout === 'side' ? ' translateX(-50%)' : '';
+      el.style.transform = `translate(${((v.x * 0.5 + 0.5) * width).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * height).toFixed(1)}px)${centred}`;
+    });
+  }
+
   dispose(): void {
+    this.compare?.dispose();
+    this.endFlyby();
+    this.vapour?.dispose();
     this.running = false;
     window.removeEventListener('resize', this.resize);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('popstate', this.onPopState);
     this.chapters?.dispose();
+    this.audio.dispose();
     for (const l of [...this.leaving]) this.drop(l);
     this.model?.dispose();
     this.bench?.dispose();

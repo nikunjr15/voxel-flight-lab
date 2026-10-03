@@ -4,7 +4,8 @@ import type { AircraftConfig } from '../../aircraft/types';
 
 export type BuildRequest =
   | { id: number; kind: 'build'; config: AircraftConfig; opts: AssembleOptions }
-  | { id: number; kind: 'silhouette'; config: AircraftConfig };
+  | { id: number; kind: 'silhouette'; config: AircraftConfig }
+  | { id: number; kind: 'ping' };
 
 export interface BuildResponse {
   id: number;
@@ -24,6 +25,10 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 ctx.addEventListener('message', (e: MessageEvent<BuildRequest>) => {
   const req = e.data;
   try {
+    if (req.kind === 'ping') {
+      ctx.postMessage({ id: req.id } satisfies BuildResponse);
+      return;
+    }
     if (req.kind === 'silhouette') {
       const s = silhouette(req.config);
       ctx.postMessage({ id: req.id, silhouette: s } satisfies BuildResponse, [s.cells.buffer]);

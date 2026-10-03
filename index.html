@@ -9,6 +9,18 @@
       content="An interactive museum of fighter jet evolution, with every airframe generated as voxels in code."
     />
     <meta name="theme-color" content="#e9eced" />
+    <script>
+      // The loader is the way in at the introduction, once per tab. Repeat
+      // visits, deep links and review views go straight to the page. Decided
+      // here, before first paint, so the page never flashes up underneath.
+      (function () {
+        var skip = /^#ch[1-8]/.test(location.hash) || /[?&](id|gallery|rig)=/.test(location.search);
+        try {
+          if (sessionStorage.getItem('vfl.entered') === '1') skip = true;
+        } catch (e) {}
+        document.documentElement.classList.add(skip ? 'is-entered' : 'is-loading');
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,6 +29,19 @@
     />
   </head>
   <body>
+    <div class="loader" role="dialog" aria-modal="true" aria-labelledby="loader-title">
+      <canvas class="loader__wing" aria-hidden="true"></canvas>
+      <p class="loader__label" id="loader-title">Calibrating airframe</p>
+      <p class="loader__pct" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span data-field="pct">0</span><span class="loader__unit">%</span>
+      </p>
+      <div class="loader__actions" hidden>
+        <button class="loader__btn loader__btn--primary" type="button" data-enter="sound">Enter with sound</button>
+        <button class="loader__btn" type="button" data-enter="silence">Enter in silence</button>
+      </div>
+      <p class="sr-only loader__status" aria-live="polite"></p>
+    </div>
+
     <a class="skip" href="#exhibit">Skip to exhibit text</a>
     <canvas id="stage" aria-hidden="true"></canvas>
     <div data-mount="chapters"></div>
@@ -72,8 +97,9 @@
 
       <footer class="chrome__foot">
         <p class="foot__left">
-          <span class="foot__key" data-field="scroll-verb">Scroll</span> chapters
+          <span class="foot__scroll"><span class="foot__key" data-field="scroll-verb">Scroll</span> chapters</span>
           <span class="foot__arrows"><span class="foot__key">← →</span> aircraft</span>
+          <span class="foot__egg" data-field="egg">Psst — hold Space.</span>
         </p>
         <p class="foot__right">
           <span class="foot__dot" aria-hidden="true"></span>

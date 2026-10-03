@@ -1,0 +1,421 @@
+/*
+ * Compare: the head (pickers, suggestions, note) takes the placard's slot and
+ * the stat bars take the notes' slot, so the hangar uses the same grid as an
+ * exhibit. Aircraft A is ink throughout, aircraft B the accent.
+ */
+
+.compare-head,
+.compare-stats,
+.compare-label {
+  display: none;
+}
+
+/* The exhibit line names one aircraft; in the hangar there are two. */
+.chrome.is-compare .meta__line + .meta__line,
+.chrome.is-compare .chrome__main,
+.chrome.is-compare .chrome__notes,
+.chrome.is-compare .chrome__panel {
+  display: none;
+}
+
+.chrome.is-compare .compare-head,
+.chrome.is-compare .compare-stats {
+  display: block;
+  pointer-events: auto;
+  opacity: calc(1 - var(--intro));
+}
+
+.chrome.is-compare.is-intro .compare-head,
+.chrome.is-compare.is-intro .compare-stats {
+  pointer-events: none;
+}
+
+.chrome.is-compare .compare-label {
+  display: block;
+  opacity: calc(1 - var(--intro));
+}
+
+.compare-label[hidden] {
+  display: none !important;
+}
+
+/* Single-aircraft controls rest while the hangar is up. */
+.toolbar__group button:disabled {
+  opacity: 0.32;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ---------- head ---------- */
+
+.compare-head {
+  grid-area: title;
+  align-self: center;
+  justify-self: start;
+  width: min(30rem, 40vw);
+}
+
+.compare-head__title {
+  margin: 0 0 clamp(14px, 1.6vw, 22px);
+  font-weight: 300;
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+
+.compare-head__pickers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-head__vs {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.compare-head__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.compare-chip {
+  padding: 6px 11px 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart);
+}
+
+.compare-chip:hover {
+  color: var(--ink);
+  background: rgba(22, 25, 28, 0.05);
+}
+
+.compare-chip[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.compare-head__note {
+  position: relative;
+  margin: 16px 0 0;
+  max-width: 28rem;
+  padding-left: 13px;
+  border-left: 1px solid var(--line-strong);
+  font-size: var(--t-body);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.compare-head__note::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--accent);
+}
+
+/* ---------- picker ---------- */
+
+.picker {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.picker__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.picker--b .picker__dot {
+  background: var(--accent);
+}
+
+.picker__chev {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.picker__pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 6;
+  width: max(100%, 17rem);
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-solid);
+  box-shadow: 0 12px 34px rgba(22, 25, 28, 0.14);
+}
+
+.picker--b .picker__pop {
+  left: auto;
+  right: 0;
+}
+
+.picker__search {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-warm);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--t-mono);
+}
+
+.picker__list {
+  max-height: min(46vh, 22rem);
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.picker__group {
+  padding: 10px 8px 4px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.picker__option {
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: var(--t-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.picker__option.is-active,
+.picker__option:hover {
+  background: rgba(22, 25, 28, 0.06);
+}
+
+.picker__option[aria-selected='true'] {
+  font-weight: 500;
+}
+
+.picker__no {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+}
+
+/* ---------- stat bars ---------- */
+
+.compare-stats {
+  grid-area: notes;
+  align-self: end;
+  justify-self: start;
+  width: min(30rem, 40vw);
+}
+
+.compare-stats__list {
+  display: grid;
+  grid-template-columns: 6.6rem 1fr;
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.compare-stats__list dt {
+  padding-top: 1px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.compare-stats__list dd {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat__track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(22, 25, 28, 0.07);
+  overflow: hidden;
+}
+
+.stat__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: var(--ink);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform var(--dur-slow) var(--ease-out-expo);
+}
+
+.stat--b .stat__fill {
+  background: var(--accent);
+}
+
+/* No figure: a dashed empty track, never a bar of zero. */
+.stat.is-missing .stat__track {
+  background: none;
+  border: 1px dashed var(--line-strong);
+}
+
+.stat__value {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat.is-missing .stat__value {
+  color: var(--ink-3);
+}
+
+/* ---------- labels under the aircraft ---------- */
+
+.compare-label {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  padding: 3px 8px 2px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.compare-label--b {
+  background: var(--accent);
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 759px) {
+  .compare-head,
+  .compare-stats {
+    width: auto;
+    justify-self: stretch;
+  }
+
+  .compare-head {
+    align-self: start;
+    margin-top: 6px;
+  }
+
+  .compare-head__title {
+    display: none;
+  }
+
+  .compare-head__chips {
+    flex-wrap: nowrap;
+    margin: 10px calc(-1 * var(--pad)) 0;
+    padding: 0 var(--pad) 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .compare-chip {
+    flex: none;
+  }
+
+  .compare-head__note {
+    margin-top: 10px;
+    font-size: var(--t-micro);
+    line-height: 1.45;
+  }
+
+  .compare-stats__list {
+    grid-template-columns: 5.2rem 1fr;
+    gap: 5px 10px;
+  }
+
+  .stat {
+    grid-template-columns: minmax(0, 1fr) 8.6rem;
+  }
+
+  .picker__pop {
+    position: fixed;
+    left: var(--pad);
+    right: var(--pad);
+    top: auto;
+    width: auto;
+  }
+
+  .picker--b .picker__pop {
+    left: var(--pad);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat__fill {
+    transition: none;
+  }
+}

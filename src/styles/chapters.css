@@ -392,3 +392,20 @@
     height: calc(max(calc(var(--pad) * 0.7), env(safe-area-inset-bottom)) + 96px);
   }
 }
+
+.foot__egg {
+  margin-left: 1.4em;
+  color: var(--ink-4);
+}
+
+/* One line on a phone, beside the block count: the egg hint takes the place
+   of "swipe chapters", which a phone needs no telling. */
+@media (max-width: 759px) {
+  .foot__scroll {
+    display: none;
+  }
+
+  .foot__egg {
+    margin-left: 0;
+  }
+}

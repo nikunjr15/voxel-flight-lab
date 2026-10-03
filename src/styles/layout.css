@@ -123,10 +123,19 @@
     justify-self: stretch;
   }
 
-  /* Specific enough to beat the component rule, which loads later. A hidden
-     item whose grid-area is not in this template would otherwise make the
-     grid invent tracks for it and squeeze everything into half the width. */
+  /* The gizmo alone, bottom right of the free band above the notes: on a
+     phone it is what a long press goes to. Placed by row and column, not by
+     area name -- an item whose grid-area is not in this template makes the
+     grid invent tracks for it. Specific enough to beat the component rule. */
   .chrome > .inspect {
+    grid-row: 3;
+    grid-column: 1;
+    align-self: end;
+    justify-self: end;
+    margin-bottom: 8px;
+  }
+
+  .chrome > .inspect .inspect__label {
     display: none;
   }
 

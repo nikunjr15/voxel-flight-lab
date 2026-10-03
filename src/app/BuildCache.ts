@@ -18,7 +18,7 @@ export class BuildCache {
   constructor(private readonly limit = 8) {}
 
   private key(config: AircraftConfig, opts: AssembleOptions): string {
-    return `${config.id}|${opts.density ?? 1}|${opts.wingSweep ?? '-'}`;
+    return `${config.id}|${opts.density ?? 1}|${opts.wingSweep ?? '-'}|${opts.voxelSize ?? '-'}`;
   }
 
   has(config: AircraftConfig, opts: AssembleOptions): boolean {

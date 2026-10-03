@@ -362,3 +362,74 @@ export class SpeedLines {
     this.pool.dispose();
   }
 }
+
+/**
+ * The vapour cone of a transonic pass: a bell of condensation round the
+ * airframe, narrow near the cockpit and opening aft past the wings. Voxel
+ * particles on that shell drift aft and re-form at the front, so the cone
+ * shimmers rather than sitting as a solid shape. `level` 0..1 grows it in
+ * from the front and thickens it; the flyby drives it.
+ */
+export class VapourCone {
+  private readonly pool: ParticlePool;
+  private readonly seeds: Float32Array;
+  private length = 15;
+  private span = 10;
+  private time = 0;
+  level = 0;
+
+  constructor(parent: Group, capacity = 520) {
+    this.pool = new ParticlePool(capacity, { additive: false, opacity: 0.5 });
+    this.pool.mesh.renderOrder = 22;
+    parent.add(this.pool.mesh);
+    // Per particle: angle round the axis, place along it, size, drift speed.
+    this.seeds = new Float32Array(capacity * 4);
+    for (let i = 0; i < capacity; i++) {
+      this.seeds[i * 4] = Math.random() * Math.PI * 2;
+      this.seeds[i * 4 + 1] = Math.random();
+      this.seeds[i * 4 + 2] = 0.6 + Math.random() * 0.8;
+      this.seeds[i * 4 + 3] = 0.6 + Math.random() * 0.7;
+    }
+  }
+
+  setShape(length: number, span: number): void {
+    this.length = length;
+    this.span = span;
+  }
+
+  update(dt: number): void {
+    this.time += dt;
+    const pool = this.pool;
+    const lv = Math.max(0, Math.min(1, this.level));
+    pool.visible = lv > 0.001;
+    if (lv <= 0.001) return;
+    const L = this.length;
+    const front = L * 0.18;
+    const back = -L * 0.42;
+    const r0 = this.span * 0.12;
+    const r1 = this.span * 0.58;
+    const size = Math.max(0.12, L / 70);
+    for (let i = 0; i < pool.capacity; i++) {
+      const a = this.seeds[i * 4];
+      // Drift aft and wrap: the cone keeps re-forming at its front.
+      const u = (this.seeds[i * 4 + 1] + this.time * 0.35 * this.seeds[i * 4 + 3]) % 1;
+      // The cone grows in from the front as the level rises.
+      if (u > lv * 1.05) {
+        pool.hide(i);
+        continue;
+      }
+      const z = front + (back - front) * u;
+      // A bell, not a straight cone: it flares quickly, then slows.
+      const r = r0 + (r1 - r0) * Math.sqrt(u) * (0.92 + 0.08 * Math.sin(a * 5 + this.time * 3));
+      const fade = Math.sin(Math.PI * Math.min(1, u / Math.max(0.05, lv)));
+      const s = size * this.seeds[i * 4 + 2] * fade * (0.5 + 0.5 * lv);
+      pool.set(i, Math.cos(a) * r, Math.sin(a) * r * 0.82, z, s, s, s * 1.6, 0.94, 0.96, 1.0);
+    }
+    pool.commit();
+  }
+
+  dispose(): void {
+    this.pool.mesh.removeFromParent();
+    this.pool.dispose();
+  }
+}

@@ -1,0 +1,115 @@
+/*
+ * The entry screen. It sits over everything until the visitor picks a way
+ * in; the page underneath keeps loading and does not scroll meanwhile.
+ */
+
+.is-loading,
+.is-loading body {
+  overflow: hidden;
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: var(--pad);
+  background: radial-gradient(ellipse at 50% 45%, var(--bg-warm), var(--bg) 70%);
+  transition: opacity var(--dur-slow) var(--ease-out-quart);
+}
+
+.is-loading .loader,
+.loader.is-leaving {
+  display: flex;
+}
+
+.loader.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader__wing {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.loader__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.loader__pct {
+  margin: 0;
+  font-weight: 300;
+  font-size: clamp(3.2rem, 9vw, 5.6rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.loader__unit {
+  margin-left: 0.06em;
+  font-size: 0.45em;
+  color: var(--ink-3);
+}
+
+.loader__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+  animation: loader-in var(--dur-slow) var(--ease-out-expo);
+}
+
+/* Space kept from the start, so nothing jumps when the buttons arrive. */
+.loader__actions[hidden] {
+  display: flex;
+  visibility: hidden;
+}
+
+@keyframes loader-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.loader__btn {
+  padding: 12px 20px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart);
+}
+
+.loader__btn:hover {
+  background: var(--bg-warm);
+}
+
+.loader__btn--primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.loader__btn--primary:hover {
+  background: #2a2f34;
+}
