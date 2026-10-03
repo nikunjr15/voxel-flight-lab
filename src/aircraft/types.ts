@@ -52,6 +52,11 @@ export interface AircraftCopy {
   category: string;
   subtitle: [string, string];
   annotations: Annotation[];
+  /**
+   * Gun armament in one sentence, for weapons mode. Only where the fit is well
+   * documented and the gun ports are modelled; left out everywhere else.
+   */
+  armament?: string;
 }
 
 /* ---------- geometry, all dimensions in metres ---------- */
@@ -191,7 +196,13 @@ export interface LerxParams {
   thickness: number;
 }
 
-export type CockpitTier = 'analog' | 'mfd' | 'hmd';
+/**
+ * Cockpit fit by era. analog: dials and a reflector gunsight (gen 1-2).
+ * mixed: dials alongside the first small screens (gen 3). mfd: multifunction
+ * displays and a head-up display (gen 4 and 4.5). glass: large displays,
+ * optionally one panoramic touchscreen, with the HUD optional (gen 5).
+ */
+export type CockpitTier = 'analog' | 'mixed' | 'mfd' | 'glass';
 
 export interface CanopyParams {
   fromZ: number;
@@ -204,6 +215,13 @@ export interface CanopyParams {
   framed?: boolean;
   /** Crew seated in tandem. */
   seats?: number;
+  /**
+   * Head-up display in the front cockpit. Defaults to true; false for an
+   * aircraft flown off a helmet-mounted display alone, like the F-35.
+   */
+  hud?: boolean;
+  /** One wide touchscreen across the panel instead of separate displays. */
+  panoramic?: boolean;
 }
 
 export type IntakeKind =
@@ -307,6 +325,11 @@ export interface StoreParams {
   pylon?: { height: number; chord: number };
   /** Tail fin span; 0 for a smooth tank. */
   fins?: number;
+  /**
+   * Part of the weapons-mode load rather than the aircraft's resting fit. Load
+   * stores are hidden until weapons mode flies them onto their pylons.
+   */
+  load?: boolean;
   palette?: PaletteSlot;
 }
 

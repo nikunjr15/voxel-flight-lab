@@ -21,6 +21,8 @@ export const PALETTE_SLOTS = [
   'seat',
   'hud',
   'hudDim',
+  'gauge',
+  'screen',
   'metal',
   'nozzle',
   'exhaust',
@@ -46,6 +48,8 @@ const SLOT_KIND: Record<PaletteSlot, MaterialKind> = {
   seat: 'opaque',
   hud: 'emissive',
   hudDim: 'emissive',
+  gauge: 'opaque',
+  screen: 'emissive',
   metal: 'metal',
   nozzle: 'metal',
   exhaust: 'emissive',
@@ -92,6 +96,14 @@ export class Palette {
           .padStart(2, '0');
       this.bySlot.set('hudDim', this.add(`#${dim(r)}${dim(g)}${dim(b)}`, 'emissive'));
     }
+    // Stores: light grey unless the config says otherwise. In the skin colour
+    // a missile on its pylon disappears against the wing above it.
+    if (!this.bySlot.has('store')) this.bySlot.set('store', this.add('#cdd3d8', 'opaque'));
+    // Instrument faces: pale dials on the dark panel.
+    if (!this.bySlot.has('gauge')) this.bySlot.set('gauge', this.add('#c4cacf', 'opaque'));
+    // Display glass: a dark teal that only reads as a screen once cockpit mode
+    // raises its emissive term.
+    if (!this.bySlot.has('screen')) this.bySlot.set('screen', this.add('#21403f', 'emissive'));
   }
 
   add(hex: string, kind: MaterialKind): number {

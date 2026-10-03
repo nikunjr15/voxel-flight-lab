@@ -163,7 +163,7 @@ export const MIG23: AircraftConfig = {
       baseY: 0.52,
       topY: 1.2,
       halfWidth: 0.42,
-      tier: 'analog',
+      tier: 'mixed',
       framed: true,
       seats: 1,
     },
@@ -175,6 +175,12 @@ export const MIG23: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on pylons under the fixed glove, and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [1.6, -0.1, 0], chord: 0.45, length: 3.65, radius: 0.1, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'tank', at: [0, -1.08, 8.3], length: 3.8, radius: 0.33, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
     ],
     markings: {
       radius: 0.5,

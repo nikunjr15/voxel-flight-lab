@@ -145,7 +145,7 @@ export const GRIPEN: AircraftConfig = {
       baseY: 0.48,
       topY: 1.2,
       halfWidth: 0.4,
-      tier: 'hmd',
+      tier: 'mfd',
       seats: 1,
     },
     blocks: [
@@ -156,6 +156,13 @@ export const GRIPEN: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the wingtips and under the wings, and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [4.2, -0.1, 0], chord: 0.6, length: 2.9, radius: 0.065, mirror: true, load: true },
+      { kind: 'missile', at: [2.8, -0.52, 0], chord: 0.45, length: 3.65, radius: 0.09, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'tank', at: [0, -0.94, 7], length: 3.4, radius: 0.3, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
     ],
     markings: {
       radius: 0.56,

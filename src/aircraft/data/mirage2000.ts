@@ -63,6 +63,9 @@ export const MIRAGE2000: AircraftConfig = {
     accent: '#002395',
   },
   geometry: {
+    // The broad delta puts this one over the voxel budget under the planform
+    // rule, so the resolution is set directly.
+    targetLengthVoxels: 125,
     bbox: { span: 9.3, height: 4.2 },
     fuselage: {
       length: 14.36,
@@ -155,6 +158,13 @@ export const MIRAGE2000: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the inner and outer wing pylons, and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [1.9, -0.62, 0], chord: 0.45, length: 3.2, radius: 0.09, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'missile', at: [3.3, -0.61, 0], chord: 0.5, length: 2.9, radius: 0.07, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [0, -1.1, 8], length: 4, radius: 0.33, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
     ],
     markings: {
       radius: 0.68,

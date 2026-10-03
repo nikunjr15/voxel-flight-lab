@@ -6,6 +6,7 @@ import { Gizmo } from './Gizmo';
 import { SpecTable } from './SpecTable';
 import { Title } from './Title';
 import { MODES, Toolbar } from './Toolbar';
+import { ModePanel } from './ModePanel';
 
 const q = <T extends HTMLElement>(root: ParentNode, sel: string): T => {
   const el = root.querySelector<T>(sel);
@@ -27,6 +28,7 @@ export class Chrome {
   private readonly blocks: HTMLElement;
   private readonly live: HTMLElement;
   private readonly inspect: HTMLButtonElement;
+  private readonly panel: ModePanel;
 
   constructor(
     root: HTMLElement,
@@ -36,6 +38,7 @@ export class Chrome {
     this.title = new Title(root);
     this.notes = new Annotations(q(root, '[data-mount="notes"]'), store);
     new Toolbar(q(root, '[data-mount="toolbar"]'), store);
+    this.panel = new ModePanel(q(root, '[data-mount="panel"]'), store);
     this.inspect = q<HTMLButtonElement>(root, '.inspect');
     this.gizmo = new Gizmo(this.inspect);
     this.spec = new SpecTable(q(root, '[data-mount="spec"]'));
@@ -66,6 +69,7 @@ export class Chrome {
     this.title.show(config);
     this.notes.show(config.copy.annotations);
     this.spec.show(config);
+    this.panel.show(config);
     this.announce(`${config.name}, exhibit ${config.exhibitNo}`);
   }
 

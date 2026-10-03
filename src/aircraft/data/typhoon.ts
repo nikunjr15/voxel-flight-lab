@@ -144,7 +144,7 @@ export const TYPHOON: AircraftConfig = {
       baseY: 0.52,
       topY: 1.3,
       halfWidth: 0.42,
-      tier: 'hmd',
+      tier: 'mfd',
       seats: 1,
     },
     blocks: [
@@ -155,6 +155,14 @@ export const TYPHOON: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Four missiles semi-recessed under the fuselage, more under the wings, and two wing tanks.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [0.62, -0.6, 8.6], length: 3.65, radius: 0.09, mirror: true, load: true },
+      { kind: 'missile', at: [0.62, -0.6, 11.2], length: 3.65, radius: 0.09, mirror: true, load: true },
+      { kind: 'missile', at: [3.4, -0.48, 0], chord: 0.5, length: 2.9, radius: 0.085, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [2.3, -0.64, 0], chord: 0.42, length: 3.6, radius: 0.3, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
     ],
     markings: {
       radius: 0.64,

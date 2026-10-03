@@ -1,5 +1,6 @@
 import { DEG } from '../util/math';
 import { fillBox, fillFrame, fillLoftZ, makeFrame } from '../voxel/rasterize';
+import type { FillMode } from '../voxel/VoxelGrid';
 import type { BayParams, StoreParams, SurfaceParams } from '../../aircraft/types';
 import { wingChordZ } from './planform';
 import type { BuildCtx } from './ctx';
@@ -30,7 +31,7 @@ function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1, zAft: number): 
   const r = Math.max(1, ctx.v(s.radius));
   const body = ctx.slot(s.palette, 'store');
   const pylonPal = ctx.pal.idx('pylon');
-  const storePart = ctx.p('store');
+  const storePart = ctx.p(s.load ? 'load' : 'store');
 
   if (s.kind === 'rail') {
     fillBox(grid, [cx - r, cy - r * 0.6, zMid - half], [cx + r, cy + r * 0.6, zMid + half], {
@@ -40,23 +41,9 @@ function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1, zAft: number): 
     return;
   }
 
-  // Body: a tube with an ogive nose and a tapered tail.
-  fillLoftZ(
-    grid,
-    zMid - half,
-    zMid + half,
-    (z) => {
-      const t = (z - (zMid - half)) / Math.max(1e-6, half * 2);
-      // t = 0 at the tail, 1 at the nose.
-      let k = 1;
-      if (t > 0.78) k = Math.sqrt(Math.max(0, 1 - ((t - 0.78) / 0.22) ** 2));
-      else if (t < 0.12) k = 0.72 + (t / 0.12) * 0.28;
-      const rr = r * k;
-      if (rr < 0.5) return null;
-      return { cx, cy, w: rr, h: rr, e: 2 };
-    },
-    { pal: body, part: storePart },
-  );
+  // Loads only fill air: several sit half buried in the fuselage, and a load
+  // written over skin would leave a hole there while it is hidden.
+  fillStoreBody(ctx, cx, cy, zMid, half, r, body, storePart, s.load ? 'fill-empty' : 'set');
 
   const finSpan = s.fins ?? (s.kind === 'tank' ? 0 : 4);
   if (finSpan > 0) {
@@ -75,7 +62,7 @@ function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1, zAft: number): 
         [-fin, -0.6, 0],
         [fin, 0.6, len],
         (lx, ly, lz) => Math.abs(lx) <= fin * (1 - lz / (len * 1.6)) && Math.abs(ly) <= 0.6,
-        { pal: body, part: storePart },
+        { pal: body, part: storePart, mode: s.load ? 'fill-empty' : 'set' },
       );
     }
   }
@@ -88,6 +75,36 @@ function buildStore(ctx: BuildCtx, s: StoreParams, side: 1 | -1, zAft: number): 
       part: ctx.p('pylon'),
     });
   }
+}
+
+/** A store's body: a tube with an ogive nose and a tapered tail. Grid units. */
+function fillStoreBody(
+  ctx: BuildCtx,
+  cx: number,
+  cy: number,
+  zMid: number,
+  half: number,
+  r: number,
+  pal: number,
+  part: number,
+  mode: FillMode = 'set',
+): void {
+  fillLoftZ(
+    ctx.grid,
+    zMid - half,
+    zMid + half,
+    (z) => {
+      const t = (z - (zMid - half)) / Math.max(1e-6, half * 2);
+      // t = 0 at the tail, 1 at the nose.
+      let k = 1;
+      if (t > 0.78) k = Math.sqrt(Math.max(0, 1 - ((t - 0.78) / 0.22) ** 2));
+      else if (t < 0.12) k = 0.72 + (t / 0.12) * 0.28;
+      const rr = r * k;
+      if (rr < 0.5) return null;
+      return { cx, cy, w: rr, h: rr, e: 2 };
+    },
+    { pal, part, mode },
+  );
 }
 
 /**
@@ -135,6 +152,29 @@ function buildBay(ctx: BuildCtx, bay: BayParams): void {
     });
   }
 
+  // Internal weapons on trapeze arms hung from the roof. Generic missiles sized
+  // to the bay, with no particular type claimed, so weapons mode has something
+  // to lower once the doors are open. Closed, they are invisible.
+  const bayStore = ctx.p('bay-store');
+  const storePal = ctx.pal.add('#aab1b7', 'opaque');
+  const armPal = ctx.pal.idx('frame');
+  const half = Math.min((zB - zA) * 0.43, ctx.v(1.85));
+  const r = Math.max(0.6, ctx.v(0.09));
+  const count = Math.max(2, Math.min(4, Math.floor((hw * 2) / Math.max(2.4, r * 4.5))));
+  const zMid = (zA + zB) / 2;
+  const cy = top - r - 1.2;
+  for (let i = 0; i < count; i++) {
+    const f = -1 + (2 * i) / (count - 1);
+    const cx = ctx.gx(0) + f * Math.max(0, hw - r - 0.8);
+    fillStoreBody(ctx, cx, cy, zMid, half, r, storePal, bayStore);
+    // The trapeze arm, from the missile up to the roof. It lowers with it.
+    fillBox(grid, [cx - 0.4, cy + r - 0.3, zMid - 1], [cx + 0.4, top - 0.2, zMid + 1], {
+      pal: armPal,
+      part: bayStore,
+      mode: 'fill-empty',
+    });
+  }
+
   // Doors hinge at the outboard edge and swing down. At 0 the door lies flat
   // across the opening; at full open it hangs vertically from the hinge.
   const open = (bay.doorOpen ?? 0) * 95 * DEG;
@@ -153,7 +193,7 @@ function buildBay(ctx: BuildCtx, bay: BayParams): void {
       [0, -0.8, 0],
       [hw, 0.8, zB - zA],
       (lx, ly) => lx >= 0 && lx <= hw && Math.abs(ly) <= 0.8,
-      { pal: doorPal, part: ctx.p('bay-door') },
+      { pal: doorPal, part: ctx.p(side > 0 ? 'bay-door-r' : 'bay-door-l') },
     );
   }
 }

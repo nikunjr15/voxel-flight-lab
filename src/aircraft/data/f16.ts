@@ -61,7 +61,7 @@ export const F16: AircraftConfig = {
     metal: '#8f949a',
     nozzle: '#6f6a66',
     exhaust: '#6b3417',
-    store: '#6f7a84',
+    store: '#cdd3d8',
     pylon: '#5c666f',
     accent: '#ff6a2b',
   },
@@ -197,6 +197,11 @@ export const F16: AircraftConfig = {
       },
     ],
     stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the wingtip rails and outer pylons, and two wing tanks.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [4.78, -0.1, 0], chord: 0.5, length: 2.9, radius: 0.065, mirror: true, load: true },
+      { kind: 'missile', at: [3.6, -0.44, 0], chord: 0.5, length: 2.9, radius: 0.07, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [2.3, -0.6, 0], chord: 0.42, length: 3.5, radius: 0.3, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
       { kind: 'rail', at: [4.72, 0.02, 0], chord: 0.5, length: 2.4, radius: 0.13, mirror: true },
     ],
     markings: {

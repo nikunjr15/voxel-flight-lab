@@ -60,7 +60,7 @@ export const F15: AircraftConfig = {
     metal: '#949aa0',
     nozzle: '#6c6864',
     exhaust: '#6b3417',
-    store: '#6f7a84',
+    store: '#cdd3d8',
     pylon: '#59636c',
     accent: '#2a3b78',
   },
@@ -169,6 +169,14 @@ export const F15: AircraftConfig = {
       tier: 'mfd',
       seats: 1,
     },
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Four missiles along the fuselage corners, more on the wing pylons, and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [1.25, -0.62, 9], length: 3.65, radius: 0.1, mirror: true, load: true },
+      { kind: 'missile', at: [1.25, -0.62, 12.6], length: 3.65, radius: 0.1, mirror: true, load: true },
+      { kind: 'missile', at: [3, -0.24, 0], chord: 0.5, length: 2.9, radius: 0.07, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [0, -1.09, 10.6], length: 4.2, radius: 0.34, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
+    ],
     markings: {
       radius: 0.78,
       wing: { x: 3.2, chord: 0.4 },

@@ -201,7 +201,7 @@ export const SU57: AircraftConfig = {
       baseY: 0.34,
       topY: 1.22,
       halfWidth: 0.46,
-      tier: 'hmd',
+      tier: 'glass',
       seats: 1,
     },
     bays: [

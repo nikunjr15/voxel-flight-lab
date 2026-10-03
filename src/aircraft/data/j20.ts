@@ -165,7 +165,7 @@ export const J20: AircraftConfig = {
       baseY: 0.46,
       topY: 1.32,
       halfWidth: 0.44,
-      tier: 'hmd',
+      tier: 'glass',
       seats: 1,
     },
     bays: [

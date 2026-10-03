@@ -38,13 +38,19 @@ export const PARTS = [
   'nozzle',
   'pylon',
   'store',
-  'bay-door',
+  'bay-door-l',
+  'bay-door-r',
   'bay',
   'marking',
   'gear',
   'airbrake',
   'probe',
   'wingtip-rail',
+  'hud-symbology',
+  'display',
+  'load',
+  'bay-store',
+  'gun',
 ] as const;
 
 export type PartId = (typeof PARTS)[number];
@@ -95,13 +101,19 @@ export const PART_LABEL: Record<PartId, string> = {
   nozzle: 'Exhaust nozzle',
   pylon: 'Pylon',
   store: 'External store',
-  'bay-door': 'Weapons bay door',
+  'bay-door-l': 'Port weapons bay door',
+  'bay-door-r': 'Starboard weapons bay door',
   bay: 'Internal weapons bay',
   marking: 'National marking',
   gear: 'Landing gear',
   airbrake: 'Airbrake',
   probe: 'Pitot probe',
   'wingtip-rail': 'Wingtip rail',
+  'hud-symbology': 'Head-up display symbology',
+  display: 'Cockpit displays',
+  load: 'External stores',
+  'bay-store': 'Internal weapons',
+  gun: 'Gun',
   'levcon-l': 'Port leading-edge vortex controller',
   'levcon-r': 'Starboard leading-edge vortex controller',
 };
@@ -138,7 +150,13 @@ export const PART_EXPLODE_DIR: Partial<Record<PartId, [number, number, number]>>
   nozzle: [0, 0, -1],
   pylon: [0, -0.8, 0],
   store: [0, -1, 0],
-  'bay-door': [0, -1, 0],
+  'bay-door-l': [-0.6, -1, 0],
+  'bay-door-r': [0.6, -1, 0],
+  'hud-symbology': [0, 0.75, 0.55],
+  display: [0, 0.75, 0.5],
+  load: [0, -1, 0],
+  'bay-store': [0, -1, 0],
+  gun: [0, 0, 1],
   bay: [0, -0.8, 0],
   gear: [0, -1, 0],
   airbrake: [0, 0.8, -0.5],
@@ -180,4 +198,11 @@ export const PROPULSION_PARTS: PartId[] = [
   'nozzle',
 ];
 
-export const COCKPIT_PARTS: PartId[] = ['cockpit', 'seat', 'hud', 'canopy-frame'];
+/**
+ * Hidden until a mode calls for them: lit HUD symbology (cockpit mode) and the
+ * weapons-mode load (weapons mode). They are built with the airframe so a mode
+ * switch is a texture write, not a rebuild.
+ */
+export const DEFAULT_HIDDEN: PartId[] = ['hud-symbology', 'load'];
+
+export const COCKPIT_PARTS: PartId[] = ['cockpit', 'seat', 'hud', 'hud-symbology', 'display', 'canopy-frame'];

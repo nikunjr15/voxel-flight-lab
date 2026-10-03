@@ -24,6 +24,7 @@ export const F86: AircraftConfig = {
     status: 'historic',
   },
   copy: {
+    armament: 'Six .50-calibre machine guns, three either side of the nose intake.',
     category: 'SINGLE-ENGINE DAY FIGHTER',
     subtitle: [
       'Swept wings on an American airframe for the first time,',
@@ -141,6 +142,17 @@ export const F86: AircraftConfig = {
       tier: 'analog',
       seats: 1,
     },
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Two underwing drop tanks; six machine guns either side of the intake.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'tank', at: [2.4, -0.64, 0], chord: 0.4, length: 3, radius: 0.25, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
+    ],
+    blocks: [
+      // Gun ports, highlighted in weapons mode. six machine guns either side of the intake.
+      { shape: 'box', at: [0.4, 0.12, 0.95], size: [0.1, 0.07, 0.3], part: 'gun', palette: 'frame', mirror: true },
+      { shape: 'box', at: [0.4, 0, 0.95], size: [0.1, 0.07, 0.3], part: 'gun', palette: 'frame', mirror: true },
+      { shape: 'box', at: [0.4, -0.12, 0.95], size: [0.1, 0.07, 0.3], part: 'gun', palette: 'frame', mirror: true },
+    ],
     markings: {
       radius: 0.78,
       wing: { x: 2.9, chord: 0.5 },

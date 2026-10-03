@@ -14,6 +14,12 @@ export interface ViewerState {
   sound: boolean;
   /** Index of the annotation card shown when only one fits. */
   note: number;
+  /** X-ray separation, 0 assembled to 1 fully apart. */
+  xray: number;
+  /** Wing sweep in degrees on variable-geometry aircraft; NaN elsewhere. */
+  sweep: number;
+  /** Radar-signature shell on stealth aircraft. */
+  radar: boolean;
 }
 
 type Listener<S, K extends keyof S> = (value: S[K], state: S) => void;
@@ -54,4 +60,13 @@ export class Store<S extends object> {
 }
 
 export const createViewerStore = (): Store<ViewerState> =>
-  new Store<ViewerState>({ mode: 'overview', orbit: false, thrust: false, sound: false, note: 0 });
+  new Store<ViewerState>({
+    mode: 'overview',
+    orbit: false,
+    thrust: false,
+    sound: false,
+    note: 0,
+    xray: 0.65,
+    sweep: Number.NaN,
+    radar: false,
+  });

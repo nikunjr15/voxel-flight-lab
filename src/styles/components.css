@@ -471,6 +471,160 @@
   }
 }
 
+/* ---------- mode panel ---------- */
+
+.chrome__panel {
+  pointer-events: auto;
+}
+
+.modepanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: panel-in var(--dur) var(--ease-out-expo);
+}
+
+.modepanel[hidden],
+.modepanel [hidden] {
+  display: none;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.modepanel__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.modepanel__value {
+  min-width: 3ch;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.modepanel input[type='range'] {
+  width: clamp(110px, 16vw, 200px);
+  accent-color: var(--ink);
+}
+
+.modepanel .chip {
+  min-height: 30px;
+  padding: 6px 12px;
+}
+
+/* ---------- x-ray leader lines ---------- */
+
+.xray {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out-quart);
+}
+
+.xray.is-on {
+  opacity: 1;
+}
+
+.xray__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.xray__lines polyline {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 0.8;
+}
+
+.xray__lines circle {
+  fill: var(--accent);
+}
+
+.xray__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(233, 236, 237, 0.86);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+  transition: opacity var(--dur-fast) linear;
+}
+
+/* ---------- radar comparison labels ---------- */
+
+.radar-label {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.radar-label--note {
+  left: 50%;
+  top: calc(var(--pad) + 52px);
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* On a phone the script places the note above the pair; let it wrap. The
+   two aircraft labels wrap too, or side by side they run into each other. */
+@media (max-width: 759px) {
+  .radar-label {
+    max-width: 42vw;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .radar-label--note {
+    left: 0;
+    top: 0;
+    max-width: calc(100vw - 2 * var(--pad));
+    white-space: normal;
+    text-align: center;
+    border-radius: 12px;
+  }
+}
+
 /* ---------- footer ---------- */
 
 .chrome__foot {

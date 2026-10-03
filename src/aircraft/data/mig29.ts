@@ -167,6 +167,12 @@ export const MIG29: AircraftConfig = {
       seats: 1,
     },
     stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on three pylons under each wing, and a tank between the engine nacelles.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [2.6, -0.54, 0], chord: 0.45, length: 4, radius: 0.1, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'missile', at: [3.9, -0.52, 0], chord: 0.5, length: 2.9, radius: 0.085, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'missile', at: [4.9, -0.56, 0], chord: 0.5, length: 2.9, radius: 0.085, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [0, -0.98, 9.5], length: 3.6, radius: 0.33, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
       { kind: 'rail', at: [5.56, 0.02, 0], chord: 0.5, length: 1.8, radius: 0.1, mirror: true },
     ],
     markings: {

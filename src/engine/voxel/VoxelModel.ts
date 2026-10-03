@@ -10,7 +10,7 @@ import {
 } from 'three';
 import { MaterialKind } from './palette';
 import { PART_COUNT, PART_INDEX, PartId } from './parts';
-import { createVoxelMaterial, createVoxelUniforms, PartState, VoxelUniforms } from './material';
+import { createVoxelMaterial, createVoxelUniforms, PartState, SOLID_OPACITY, VoxelUniforms } from './material';
 import type { SurfaceData } from './surface';
 
 export interface VoxelModelInfo {
@@ -33,6 +33,8 @@ export class VoxelModel {
   readonly uniforms: VoxelUniforms;
   readonly meshes = new Map<MaterialKind, InstancedMesh>();
   readonly materials = new Map<MaterialKind, MeshStandardMaterial>();
+  /** Ghost passes for faded parts, one per opaque bucket; hidden until something fades. */
+  private readonly ghosts: InstancedMesh[] = [];
   readonly bounds = new Box3();
   readonly info: VoxelModelInfo;
 
@@ -77,6 +79,20 @@ export class VoxelModel {
       this.meshes.set(bucket.kind, mesh);
       this.materials.set(bucket.kind, material);
       this.group.add(mesh);
+
+      if (bucket.kind !== 'glass') {
+        // Same geometry and instances, drawn blended after the solid pass and
+        // without writing depth. See createVoxelMaterial.
+        const ghostMat = createVoxelMaterial({ kind: bucket.kind, uniforms: this.uniforms, ghost: true });
+        const ghost = new InstancedMesh(geometry, ghostMat, bucket.count);
+        ghost.instanceMatrix = mesh.instanceMatrix;
+        ghost.name = `${id}:${bucket.kind}:ghost`;
+        ghost.frustumCulled = false;
+        ghost.renderOrder = 5;
+        ghost.visible = false;
+        this.ghosts.push(ghost);
+        this.group.add(ghost);
+      }
     }
 
     this.bounds.set(new Vector3(...data.min), new Vector3(...data.max));
@@ -154,29 +170,52 @@ export class VoxelModel {
     this.partState.setEmissive(p, v);
   }
 
+  /** Hot-metal glow in the heat colour, independent of the voxel's own colour. */
+  setPartHeat(part: PartId, v: number): void {
+    const p = PART_INDEX[part];
+    if (p === undefined) return;
+    this.partState.setHeat(p, v);
+  }
+
+  /** Swings a part about a hinge line in model space. */
+  setPartHinge(
+    part: PartId,
+    pivot: [number, number, number],
+    axis: [number, number, number],
+    angle: number,
+  ): void {
+    const p = PART_INDEX[part];
+    if (p === undefined) return;
+    this.partState.setHinge(p, pivot, axis, angle);
+  }
+
+  /** Hidden parts still build and count; this says whether any are showing. */
+  isPartVisible(part: PartId): boolean {
+    const p = PART_INDEX[part];
+    return p !== undefined && this.counts[p] > 0 && this.partState.getOpacity(p) > 0.02;
+  }
+
   resetParts(): void {
     this.partState.reset();
     this.setMorph(0);
-    this.setExplode(0);
+    this.setExplode(1);
     this.syncTransparency();
   }
 
   /**
-   * Opaque meshes only need blending while something is actually faded. Toggling
-   * `transparent` is a render-state change, not a recompile, so this is cheap.
+   * The ghost passes only draw while some part sits between hidden and
+   * fully opaque, so a model with nothing faded costs no extra draw calls.
    */
   private syncTransparency(): void {
-    let anyFaded = false;
+    let anyGhost = false;
     for (let p = 0; p < PART_COUNT; p++) {
-      if (this.partState.getOpacity(p) < 0.995) {
-        anyFaded = true;
+      const o = this.partState.getOpacity(p);
+      if (o > 0.02 && o < SOLID_OPACITY) {
+        anyGhost = true;
         break;
       }
     }
-    for (const [kind, mat] of this.materials) {
-      if (kind === 'glass') continue;
-      if (mat.transparent !== anyFaded) mat.transparent = anyFaded;
-    }
+    for (const g of this.ghosts) g.visible = anyGhost;
   }
 
   dispose(): void {
@@ -185,6 +224,11 @@ export class VoxelModel {
       mesh.dispose();
     }
     for (const mat of this.materials.values()) mat.dispose();
+    for (const g of this.ghosts) {
+      (g.material as MeshStandardMaterial).dispose();
+      g.dispose();
+    }
+    this.ghosts.length = 0;
     this.partState.dispose();
     this.meshes.clear();
     this.materials.clear();

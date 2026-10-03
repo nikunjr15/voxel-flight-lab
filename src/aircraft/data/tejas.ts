@@ -64,6 +64,9 @@ export const TEJAS: AircraftConfig = {
     accent: '#ff9933',
   },
   geometry: {
+    // The broad delta puts this one over the voxel budget under the planform
+    // rule, so the resolution is set directly.
+    targetLengthVoxels: 128,
     bbox: { span: 8.4, height: 3.9 },
     fuselage: {
       length: 13.2,
@@ -136,7 +139,7 @@ export const TEJAS: AircraftConfig = {
       baseY: 0.48,
       topY: 1.2,
       halfWidth: 0.4,
-      tier: 'hmd',
+      tier: 'mfd',
       seats: 1,
     },
     blocks: [
@@ -147,6 +150,12 @@ export const TEJAS: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the outer pylons and two wing tanks.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [3, -0.54, 0], chord: 0.5, length: 2.9, radius: 0.08, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [1.7, -0.69, 0], chord: 0.42, length: 3.2, radius: 0.28, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
     ],
     markings: {
       radius: 0.58,

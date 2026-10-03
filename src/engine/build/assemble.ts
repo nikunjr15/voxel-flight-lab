@@ -44,6 +44,14 @@ export interface AssembleOptions {
   wingSweep?: number;
   /** Overrides bay door opening, 0 closed to 1 open. */
   doorOpen?: number;
+  /**
+   * Builds only this box of the airframe, in model-space metres. Every fill
+   * clamps to the grid, so a small grid with a shifted origin costs only what
+   * falls inside it -- which is what makes a high-resolution cockpit section
+   * affordable. The section shares the full model's coordinates, so it drops
+   * into place over it.
+   */
+  crop?: { min: [number, number, number]; max: [number, number, number] };
 }
 
 export interface AssembleResult extends SurfaceData {
@@ -88,14 +96,13 @@ export function assemble(config: AircraftConfig, opts: AssembleOptions = {}): As
       ? ((opts.targetLengthVoxels ?? g.targetLengthVoxels)! * density) / length
       : (TARGET_PLANFORM_VOXELS * density) / planform;
 
-  const sx = Math.ceil(g.bbox.span * vpm) + 10;
-  const sy = Math.ceil(g.bbox.height * vpm) + 14;
-  const sz = Math.ceil(length * vpm) + 10;
-  const origin: [number, number, number] = [
-    Math.floor(sx / 2),
-    Math.floor(g.bbox.height * vpm * 0.42) + 7,
-    Math.floor(sz / 2),
-  ];
+  const crop = opts.crop;
+  const sx = crop ? Math.ceil((crop.max[0] - crop.min[0]) * vpm) + 2 : Math.ceil(g.bbox.span * vpm) + 10;
+  const sy = crop ? Math.ceil((crop.max[1] - crop.min[1]) * vpm) + 2 : Math.ceil(g.bbox.height * vpm) + 14;
+  const sz = crop ? Math.ceil((crop.max[2] - crop.min[2]) * vpm) + 2 : Math.ceil(length * vpm) + 10;
+  const origin: [number, number, number] = crop
+    ? [1 - crop.min[0] * vpm, 1 - crop.min[1] * vpm, 1 - crop.min[2] * vpm]
+    : [Math.floor(sx / 2), Math.floor(g.bbox.height * vpm * 0.42) + 7, Math.floor(sz / 2)];
 
   const grid = new VoxelGrid(sx, sy, sz);
   const palette = new Palette(config.palette);

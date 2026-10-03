@@ -38,6 +38,9 @@ export class CameraRig {
   private parallaxOn = true;
   private reducedMotion: boolean;
   private tween: gsap.core.Tween | null = null;
+  private shakeTarget = 0;
+  private shakeCurrent = 0;
+  private shakeTime = 0;
 
   constructor({ camera, domElement, reducedMotion = false }: RigOptions) {
     this.camera = camera;
@@ -76,13 +79,20 @@ export class CameraRig {
 
   setReducedMotion(v: boolean): void {
     this.reducedMotion = v;
-    if (v) this.parallaxStrength = 0;
+    if (v) {
+      this.parallaxStrength = 0;
+      this.shakeTarget = 0;
+    }
   }
 
-  /** Glides to a preset. Expo easing so it settles rather than stops. */
+  /**
+   * Glides to a preset. Expo easing so it settles rather than stops. The up
+   * vector glides too: set at the start, a plan-to-hero move would roll the
+   * whole view in one frame before the camera had moved at all.
+   */
   apply(preset: CameraPreset, duration = 1.5): void {
     this.tween?.kill();
-    this.camera.up.set(...(preset.up ?? [0, 1, 0]));
+    const [ux, uy, uz] = preset.up ?? [0, 1, 0];
     const [tx, ty, tz] = preset.target;
     const [px, py, pz] = preset.position;
     const d = this.reducedMotion ? 0.001 : duration;
@@ -95,9 +105,15 @@ export class CameraRig {
       ty: this.target.y,
       tz: this.target.z,
       fov: this.camera.fov,
+      ux: this.camera.up.x,
+      uy: this.camera.up.y,
+      uz: this.camera.up.z,
     };
 
     this.tween = gsap.to(state, {
+      ux,
+      uy,
+      uz,
       px,
       py,
       pz,
@@ -110,6 +126,7 @@ export class CameraRig {
       onUpdate: () => {
         this.base.set(state.px, state.py, state.pz);
         this.target.set(state.tx, state.ty, state.tz);
+        this.camera.up.set(state.ux, state.uy, state.uz).normalize();
         if (this.camera.fov !== state.fov) {
           this.camera.fov = state.fov;
           this.camera.updateProjectionMatrix();
@@ -143,7 +160,14 @@ export class CameraRig {
     this.parallaxTarget.set(x * this.parallaxStrength, -y * this.parallaxStrength * 0.6, 0);
   }
 
+  /** Light camera shake, 0 to 1. Always zero under reduced motion. */
+  setShake(amount: number): void {
+    this.shakeTarget = this.reducedMotion ? 0 : amount;
+  }
+
   update(dt: number): void {
+    this.shakeTime += dt;
+    this.shakeCurrent += (this.shakeTarget - this.shakeCurrent) * (1 - Math.exp(-dt * 4));
     if (this.orbit) {
       this.controls.update();
       this.target.copy(this.controls.target);
@@ -155,6 +179,14 @@ export class CameraRig {
     this.camera.position.copy(this.base);
     this.camera.position.x += this.parallaxCurrent.x;
     this.camera.position.y += this.parallaxCurrent.y;
+    if (this.shakeCurrent > 1e-3) {
+      // Sums of incommensurate sines: smooth, never quite repeating, and
+      // small -- a rumble rather than a jolt.
+      const t = this.shakeTime;
+      const a = this.shakeCurrent * 0.05;
+      this.camera.position.x += a * (Math.sin(t * 31.7) + 0.6 * Math.sin(t * 57.3));
+      this.camera.position.y += a * (Math.sin(t * 27.1 + 1.3) + 0.5 * Math.sin(t * 61.9));
+    }
     this.camera.lookAt(this.target);
   }
 

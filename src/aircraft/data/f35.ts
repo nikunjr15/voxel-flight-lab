@@ -150,7 +150,11 @@ export const F35: AircraftConfig = {
       baseY: 0.56,
       topY: 1.4,
       halfWidth: 0.44,
-      tier: 'hmd',
+      tier: 'glass',
+      // No HUD: the F-35 is flown off its helmet-mounted display, with one wide
+      // touchscreen across the panel.
+      hud: false,
+      panoramic: true,
       seats: 1,
     },
     bays: [

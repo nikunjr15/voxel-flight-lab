@@ -24,6 +24,7 @@ export const MIG15: AircraftConfig = {
     status: 'historic',
   },
   copy: {
+    armament: 'One 37 mm and two 23 mm cannon, under the nose.',
     category: 'SINGLE-ENGINE INTERCEPTOR',
     subtitle: [
       'Short, steep-climbing and heavily armed, built around a',
@@ -147,6 +148,17 @@ export const MIG15: AircraftConfig = {
       framed: true,
       seats: 1,
     },
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Two underwing drop tanks; three cannon under the nose.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'tank', at: [2.2, -0.48, 0], chord: 0.4, length: 2.6, radius: 0.24, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
+    ],
+    blocks: [
+      // Gun ports, highlighted in weapons mode. three cannon under the nose.
+      { shape: 'box', at: [0.24, -0.45, 1.6], size: [0.14, 0.14, 0.4], part: 'gun', palette: 'frame', mirror: false },
+      { shape: 'box', at: [-0.22, -0.45, 1.7], size: [0.1, 0.1, 0.35], part: 'gun', palette: 'frame', mirror: false },
+      { shape: 'box', at: [-0.32, -0.38, 1.9], size: [0.1, 0.1, 0.35], part: 'gun', palette: 'frame', mirror: false },
+    ],
     markings: {
       radius: 0.7,
       wing: { x: 2.5, chord: 0.5 },

@@ -160,7 +160,11 @@ export const AMCA: AircraftConfig = {
       baseY: 0.48,
       topY: 1.32,
       halfWidth: 0.44,
-      tier: 'hmd',
+      tier: 'glass',
+      // Layout not published; drawn as a generic panoramic glass cockpit and
+      // described as such.
+      hud: false,
+      panoramic: true,
       seats: 1,
     },
     bays: [

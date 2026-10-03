@@ -25,6 +25,7 @@ export const ME262: AircraftConfig = {
     status: 'historic',
   },
   copy: {
+    armament: 'Four 30 mm cannon, grouped in the nose.',
     category: 'TWIN-ENGINE JET FIGHTER',
     subtitle: [
       'The first jet fighter to fly in anger, built around two',
@@ -142,6 +143,9 @@ export const ME262: AircraftConfig = {
       seats: 1,
     },
     blocks: [
+      // Gun ports, highlighted in weapons mode. Four cannon in the nose.
+      { shape: 'box', at: [0.12, 0.1, 0.6], size: [0.09, 0.09, 0.25], part: 'gun', palette: 'frame', mirror: true },
+      { shape: 'box', at: [0.12, -0.05, 0.7], size: [0.09, 0.09, 0.25], part: 'gun', palette: 'frame', mirror: true },
       {
         shape: 'box',
         at: [0, -0.15, 0.55],

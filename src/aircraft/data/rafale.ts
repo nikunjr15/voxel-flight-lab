@@ -118,7 +118,9 @@ export const RAFALE: AircraftConfig = {
     },
     intakes: [
       {
-        kind: 'side-half-cone',
+        // Fixed intakes with no shock cone; the half-cone layout belongs to
+        // the Mirage line, not this aircraft.
+        kind: 'side-rect',
         atZ: 5.1,
         length: 2.2,
         halfWidth: 0.3,
@@ -145,7 +147,7 @@ export const RAFALE: AircraftConfig = {
       baseY: 0.5,
       topY: 1.26,
       halfWidth: 0.42,
-      tier: 'hmd',
+      tier: 'mfd',
       seats: 1,
     },
     blocks: [
@@ -156,6 +158,13 @@ export const RAFALE: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the wingtips and outer pylons, and two wing tanks.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [5.3, -0.12, 0], chord: 0.6, length: 2.9, radius: 0.065, mirror: true, load: true },
+      { kind: 'missile', at: [3.4, -0.54, 0], chord: 0.5, length: 3.1, radius: 0.08, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [2, -0.7, 0], chord: 0.42, length: 3.6, radius: 0.3, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
     ],
     markings: {
       radius: 0.66,

@@ -145,6 +145,11 @@ export const GNAT: AircraftConfig = {
       framed: true,
       seats: 1,
     },
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Two underwing drop tanks.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'tank', at: [1.5, -0.32, 0], chord: 0.42, length: 2.2, radius: 0.2, fins: 0, mirror: true, load: true, pylon: { height: 0.3, chord: 1.4 } },
+    ],
     markings: {
       radius: 0.52,
       wing: { x: 1.9, chord: 0.5 },

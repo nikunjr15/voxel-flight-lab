@@ -14,7 +14,11 @@ import type { AircraftConfig } from '../aircraft/types';
 import { DevStats } from '../ui/devstats';
 import { Chrome } from '../ui/Chrome';
 import { MODES } from '../ui/Toolbar';
-import { createViewerStore, type ModeId } from './store';
+import { createViewerStore } from './store';
+import { ModeManager } from '../scenes/ModeManager';
+import { RadarView } from '../scenes/RadarView';
+import { radarCards } from '../ui/modeCopy';
+import type { AssembleResult } from '../engine/build/assemble';
 
 /** `?rig=1` swaps the exhibit for the primitive test bench. Review builds only. */
 const RIG_MODE = __REVIEW__ && new URLSearchParams(location.search).get('rig') === '1';
@@ -121,6 +125,12 @@ export class App {
   private readonly stats = new DevStats();
   private readonly store = createViewerStore();
   private chrome: Chrome | null = null;
+  private modes: ModeManager | null = null;
+  private radar: RadarView | null = null;
+  private sweepTimer = 0;
+  private sweepBusy = false;
+  /** Set while load() resets the sweep for a new aircraft, so that is not a rebuild request. */
+  private sweepQuiet = false;
 
   private model: VoxelModel | null = null;
   private bench: Rig | null = null;
@@ -134,8 +144,14 @@ export class App {
   private running = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.stage = new Stage({ canvas, background: '#e9eced', maxPixelRatio: 2 });
+    // A phone renders at 1.5x at most: past that the MSAA target costs more
+    // fill than the eye gets back at that size.
+    const phone = (window.innerWidth || 1280) < 760;
+    this.stage = new Stage({ canvas, background: '#e9eced', maxPixelRatio: phone ? 1.5 : 2 });
     this.lighting = setupLighting(this.stage.scene, this.stage.renderer);
+    this.stats.attachGl(this.stage.renderer.getContext());
+    // Review builds expose the frame summary, for measuring each mode's cost.
+    if (__REVIEW__) (window as unknown as { __stats: DevStats }).__stats = this.stats;
     this.stage.scene.add(this.clouds.mesh);
     this.stage.scene.add(this.pivot);
 
@@ -152,12 +168,28 @@ export class App {
     if (!GALLERY_SET && !RIG_MODE) {
       const root = document.querySelector<HTMLElement>('.chrome');
       if (root) this.chrome = new Chrome(root, this.store);
+      this.modes = new ModeManager(
+        {
+          rig: this.rig,
+          camera: this.stage.camera,
+          store: this.store,
+          reduced: () => this.reduced,
+          heroPreset: () => this.heroPreset(),
+          planPreset: () => this.planPreset(),
+          setIdle: (v) => (this.idle = v && !this.store.get('orbit')),
+          showCards: (cards) => this.chrome?.notes.show(cards),
+          viewport: () => this.stage.size,
+        },
+        this.pivot,
+      );
+      this.radar = new RadarView();
+      this.stage.scene.add(this.radar.group);
     }
     this.bindEvents();
 
     if (GALLERY_SET) void this.loadGallery(GALLERY_SET);
     else if (RIG_MODE) void this.loadRig();
-    else void this.load(this.config).then(() => this.rig.apply(this.heroPreset(), 0.9));
+    else void this.load(this.config).then(() => this.modes?.reframe(0.9));
   }
 
   /**
@@ -388,32 +420,79 @@ export class App {
 
     this.store.on('orbit', (on) => {
       this.rig.setOrbit(on);
-      this.idle = !on && this.store.get('mode') !== 'plan';
-      if (!on) this.applyMode(this.store.get('mode'));
+      this.idle = !on && this.store.get('mode') === 'overview';
+      if (!on) this.modes?.reframe(1.2);
     });
     this.store.on('mode', (mode) => {
-      // Choosing a view hands the camera back from free orbit.
+      // Choosing a view hands the camera back from free orbit and closes the
+      // radar comparison.
       if (this.store.get('orbit')) this.store.set('orbit', false);
-      this.applyMode(mode);
+      if (this.store.get('radar')) this.store.set('radar', false);
+      this.modes?.setMode(mode);
     });
+    this.store.on('thrust', (on) => this.modes?.setThrust(on));
+    this.store.on('xray', (v) => this.modes?.setXray(v));
+    this.store.on('sweep', () => this.scheduleSweep());
+    this.store.on('radar', (on) => void this.setRadar(on));
   }
 
   /**
-   * Camera and turntable for a view mode. Overview and plan are live; the
-   * cockpit, engines, weapons and x-ray modes arrive in phase 4, and until
-   * then hold the overview shot.
+   * The wing-sweep slider rebuilds the airframe at the new angle. Throttled:
+   * a build takes a few tens of milliseconds in the worker, and a drag fires
+   * far more often than that.
    */
-  private applyMode(mode: ModeId): void {
-    if (this.refit) return;
-    if (mode === 'plan') {
-      this.idle = false;
-      this.rig.setParallax(false);
-      this.rig.apply(this.planPreset(), 1.3);
+  private scheduleSweep(): void {
+    if (this.sweepQuiet || !this.config.geometry.wing.vg) return;
+    window.clearTimeout(this.sweepTimer);
+    this.sweepTimer = window.setTimeout(() => {
+      if (this.sweepBusy) {
+        this.scheduleSweep();
+        return;
+      }
+      this.sweepBusy = true;
+      void this.load(this.config, { keepChrome: true }).finally(() => (this.sweepBusy = false));
+    }, 40);
+  }
+
+  /**
+   * Radar comparison for stealth aircraft: shells round this aircraft and a
+   * fourth-generation reference beside it. Everything the modes draw is
+   * hidden while it is up.
+   */
+  private async setRadar(on: boolean): Promise<void> {
+    const radar = this.radar;
+    const model = this.model;
+    if (!radar || !model) return;
+    if (!on) {
+      radar.hide();
+      this.modes?.setSuppressed(false);
+      this.modes?.setMode(this.store.get('mode'));
       return;
     }
-    this.idle = true;
-    this.rig.setParallax(true);
-    this.rig.apply(this.heroPreset(), 1.2);
+    this.idle = false;
+    this.modes?.setSuppressed(true);
+    this.chrome?.notes.show(radarCards());
+    await radar.show(this.config, model.size, 1 / this.voxelsPerMetre);
+    if (!this.store.get('radar')) return;
+    const b = radar.bounds;
+    const aspect = this.stage.camera.aspect || 1;
+    const fov = 34;
+    const hFov = 2 * Math.atan(Math.tan((fov * Math.PI) / 360) * aspect);
+    // On a wide screen the pair gets the half of the frame right of the
+    // placard, centred two-thirds of the way across; on a narrow one, the
+    // whole width.
+    const wide = aspect > 1.25;
+    // The bounds are the airframes alone; the shells stand proud of them.
+    const share = wide ? 0.44 : 0.62;
+    const centre = wide ? 0.36 : 0;
+    const dist = Math.max(b.width / (2 * share), b.depth * aspect * 0.44) / Math.tan(hFov / 2);
+    // Low enough that the horizontal plane, where the edge spikes lie, crosses
+    // the face of each shell instead of running round its outline.
+    const dir = new Vector3(0.22, 0.48, 0.85).normalize().multiplyScalar(dist);
+    const shift = dist * Math.tan(hFov / 2) * centre;
+    const tx = b.centreX - shift;
+    this.rig.setParallax(false);
+    this.rig.apply({ position: [tx + dir.x, dir.y, dir.z], target: [tx, 0, 0], fov }, 1.2);
   }
 
   /** Steps to the previous or next exhibit. Chapters and morphs come in phase 5. */
@@ -423,7 +502,8 @@ export class App {
     const url = new URL(location.href);
     url.searchParams.set('id', next.id);
     history.replaceState(null, '', url);
-    void this.load(next).then(() => this.applyMode(this.store.get('mode')));
+    if (this.store.get('radar')) this.store.set('radar', false);
+    void this.load(next).then(() => this.modes?.reframe(1.2));
   }
 
   private reframeTimer = 0;
@@ -432,6 +512,7 @@ export class App {
   /** World-space offset from a model to where its caption sits. */
   private labelOffset = new Vector3(0, -3.4, 0);
   private loadToken = 0;
+  private voxelsPerMetre = 1;
 
   private readonly resize = (): void => {
     this.stage.resize(window.innerWidth, window.innerHeight);
@@ -448,7 +529,11 @@ export class App {
         return;
       }
       if (RIG_MODE) return;
-      this.rig.apply(this.store.get('mode') === 'plan' ? this.planPreset() : this.heroPreset(), 0.6);
+      if (this.store.get('radar')) {
+        void this.setRadar(true);
+        return;
+      }
+      this.modes?.reframe(0.6);
     }, 160);
   };
 
@@ -464,8 +549,9 @@ export class App {
     if (!this.chrome) return;
     if (e.key === 'Escape') {
       this.store.set('orbit', false);
+      this.store.set('radar', false);
       this.store.set('mode', 'overview');
-      this.applyMode('overview');
+      this.modes?.reframe(1.2);
       return;
     }
     const n = Number(e.key);
@@ -482,12 +568,23 @@ export class App {
    * The build runs in a worker, so a later call can land first; the token
    * check throws away anything the user has already navigated past.
    */
-  async load(config: AircraftConfig): Promise<void> {
+  async load(config: AircraftConfig, opts: { keepChrome?: boolean } = {}): Promise<void> {
     const token = ++this.loadToken;
+    const changed = config !== this.config || !this.model;
     this.config = config;
-    this.chrome?.show(config);
+    const vg = config.geometry.wing.vg;
+    if (changed) {
+      this.sweepQuiet = true;
+      this.store.set('sweep', vg ? vg.sweepMin : Number.NaN);
+      this.sweepQuiet = false;
+    }
+    if (!opts.keepChrome) this.chrome?.show(config);
 
-    const data = await buildClient.build(config, { density: densityForViewport() });
+    const sweep = this.store.get('sweep');
+    const data: AssembleResult = await buildClient.build(config, {
+      density: densityForViewport(),
+      wingSweep: vg && Number.isFinite(sweep) ? sweep : undefined,
+    });
     if (token !== this.loadToken) return;
 
     this.model?.dispose();
@@ -507,6 +604,11 @@ export class App {
     this.pivot.add(this.shadow);
 
     this.model = model;
+    this.voxelsPerMetre = 1 / data.voxelSize;
+    if (this.modes) {
+      this.pivot.add(this.modes.fx);
+      this.modes.attach(model, config, data);
+    }
     this.chrome?.setBlocks(data.total);
     this.stats.setExtra(
       `${data.total.toLocaleString('en-US')} voxels · build ${data.buildMs.toFixed(0)} ms · ${model.info.drawCalls} draws`,
@@ -534,6 +636,7 @@ export class App {
 
   private readonly frame = (now: number): void => {
     if (!this.running) return;
+    const w0 = performance.now();
     const dt = Math.min(0.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
     const t = now / 1000;
@@ -558,8 +661,15 @@ export class App {
       this.pivot.position.y *= 1 - k;
     }
 
+    this.modes?.update(dt);
+    if (this.radar) {
+      const { width, height } = this.stage.size;
+      this.radar.update(dt, this.stage.camera, width, height);
+    }
     this.rig.update(dt);
+    this.stats.beginGpu();
     this.stage.render(t);
+    this.stats.endGpu();
     this.chrome?.update(this.stage.camera, this.pivot);
 
     const overlay = this.bench ?? this.gallery;
@@ -576,7 +686,7 @@ export class App {
       }, this.labelOffset);
     }
 
-    this.stats.tick(now);
+    this.stats.tick(now, performance.now() - w0);
     requestAnimationFrame(this.frame);
   };
 

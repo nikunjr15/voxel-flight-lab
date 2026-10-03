@@ -63,6 +63,9 @@ export const MIG21: AircraftConfig = {
     accent: '#c21b17',
   },
   geometry: {
+    // Long and slender: the planform rule puts this one over the voxel
+    // budget, so the resolution is set directly.
+    targetLengthVoxels: 134,
     bbox: { span: 7.3, height: 4.0 },
     fuselage: {
       length: 14.7,
@@ -163,6 +166,12 @@ export const MIG21: AircraftConfig = {
         part: 'probe',
         palette: 'frame',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Two missiles on the inner pylons and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [1.6, -0.59, 0], chord: 0.5, length: 2.9, radius: 0.07, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [0, -1, 7.6], length: 3.8, radius: 0.3, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
     ],
     markings: {
       radius: 0.62,

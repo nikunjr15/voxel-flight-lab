@@ -180,7 +180,7 @@ export const F22: AircraftConfig = {
       baseY: 0.5,
       topY: 1.36,
       halfWidth: 0.46,
-      tier: 'hmd',
+      tier: 'glass',
       seats: 1,
     },
     bays: [

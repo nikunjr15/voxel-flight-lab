@@ -133,7 +133,11 @@ export const NGAD: AircraftConfig = {
       baseY: 0.3,
       topY: 1.0,
       halfWidth: 0.46,
-      tier: 'hmd',
+      tier: 'glass',
+      // Layout not published; drawn as a generic panoramic glass cockpit and
+      // described as such.
+      hud: false,
+      panoramic: true,
       seats: 1,
     },
     bays: [

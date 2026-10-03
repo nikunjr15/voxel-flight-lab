@@ -74,11 +74,21 @@
   justify-self: end;
 }
 
+/* The toolbar, with the mode panel stacked on top of it when a mode or an
+   aircraft has controls of its own. */
 .chrome__tools {
   grid-area: tools;
   justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   max-width: 100%;
   margin-top: clamp(14px, 1.8vh, 22px);
+}
+
+.chrome__tools > nav {
+  max-width: 100%;
 }
 
 .chrome__foot {
@@ -122,6 +132,7 @@
   /* The pill becomes a strip that scrolls sideways under the thumb. */
   .chrome__tools {
     justify-self: stretch;
+    align-items: stretch;
   }
 
   .meta__chapter {

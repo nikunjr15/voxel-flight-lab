@@ -24,6 +24,7 @@ export const F104: AircraftConfig = {
     status: 'historic',
   },
   copy: {
+    armament: 'A 20 mm rotary cannon in the lower forward fuselage.',
     category: 'SINGLE-ENGINE SUPERSONIC INTERCEPTOR',
     subtitle: [
       'A missile with a man in it: the smallest wing anyone',
@@ -173,6 +174,8 @@ export const F104: AircraftConfig = {
       },
     ],
     blocks: [
+      // Gun ports, highlighted in weapons mode. Rotary cannon in the lower forward fuselage.
+      { shape: 'box', at: [-0.46, -0.16, 4], size: [0.08, 0.1, 0.3], part: 'gun', palette: 'frame', mirror: false },
       {
         shape: 'box',
         at: [0, 0.06, -0.5],

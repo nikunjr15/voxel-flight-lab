@@ -61,7 +61,7 @@ export const F4: AircraftConfig = {
     metal: '#949aa0',
     nozzle: '#6c6864',
     exhaust: '#6b3417',
-    store: '#6f7a84',
+    store: '#cdd3d8',
     pylon: '#59636c',
     accent: '#b22234',
   },
@@ -161,7 +161,7 @@ export const F4: AircraftConfig = {
       baseY: 0.5,
       topY: 1.3,
       halfWidth: 0.46,
-      tier: 'analog',
+      tier: 'mixed',
       framed: true,
       seats: 2,
     },
@@ -173,6 +173,14 @@ export const F4: AircraftConfig = {
         part: 'ventral-r',
         palette: 'skinDark',
       },
+    ],
+    stores: [
+      // Weapons-mode load, hidden until weapons mode: Four missiles semi-recessed under the fuselage, two more on the wing pylons, and a centreline tank.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [0.55, -0.86, 8.2], length: 3.65, radius: 0.1, mirror: true, load: true },
+      { kind: 'missile', at: [0.55, -0.86, 11.6], length: 3.65, radius: 0.1, mirror: true, load: true },
+      { kind: 'missile', at: [2.2, -0.69, 0], chord: 0.5, length: 2.9, radius: 0.07, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'tank', at: [0, -1.22, 9.9], length: 4.2, radius: 0.34, fins: 0, load: true, pylon: { height: 0.15, chord: 1.6 } },
     ],
     markings: {
       radius: 0.74,

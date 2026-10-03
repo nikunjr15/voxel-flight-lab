@@ -60,7 +60,7 @@ export const SU27: AircraftConfig = {
     metal: '#949aa0',
     nozzle: '#6c6864',
     exhaust: '#6b3417',
-    store: '#6f7a84',
+    store: '#cdd3d8',
     pylon: '#59636c',
     accent: '#c21b17',
   },
@@ -186,6 +186,14 @@ export const SU27: AircraftConfig = {
       seats: 1,
     },
     stores: [
+      // Weapons-mode load, hidden until weapons mode: Missiles on the wingtips, under the wings and in tandem between the engine nacelles.
+      // Generic shapes typical of the era; no particular types are claimed.
+      { kind: 'missile', at: [7.22, -0.13, 0], chord: 0.5, length: 2.9, radius: 0.065, mirror: true, load: true },
+      { kind: 'missile', at: [3.2, -0.54, 0], chord: 0.45, length: 4, radius: 0.1, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'missile', at: [4.8, -0.54, 0], chord: 0.45, length: 4, radius: 0.1, mirror: true, load: true, pylon: { height: 0.3, chord: 1.3 } },
+      { kind: 'missile', at: [6.2, -0.48, 0], chord: 0.5, length: 2.9, radius: 0.085, mirror: true, load: true, pylon: { height: 0.25, chord: 1 } },
+      { kind: 'missile', at: [0, -1, 9.6], length: 4, radius: 0.1, mirror: false, load: true, pylon: { height: 0.2, chord: 1.4 } },
+      { kind: 'missile', at: [0, -1, 13.9], length: 4, radius: 0.1, mirror: false, load: true, pylon: { height: 0.2, chord: 1.4 } },
       { kind: 'rail', at: [7.16, 0.02, 0], chord: 0.5, length: 2.3, radius: 0.11, mirror: true },
     ],
     markings: {
