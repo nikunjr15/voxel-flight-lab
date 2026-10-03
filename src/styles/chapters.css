@@ -333,16 +333,15 @@
 
   /* Over a live canvas a backdrop blur costs every frame of the scroll; a
      near-opaque ground reads as well and costs nothing. */
+  /* --text is the text's own visibility, set as it scrolls: the panel comes
+     and goes with the words on it. */
   .chapter__inner {
     max-width: none;
     padding: 20px 18px 22px;
     border-radius: var(--radius);
-    background: rgba(241, 242, 241, 0.9);
+    background: rgb(241 242 241 / calc(0.9 * var(--text, 1)));
   }
 
-  .chapter--0 .chapter__inner {
-    background: rgba(241, 242, 241, 0.72);
-  }
 
   .foot__arrows {
     display: none;

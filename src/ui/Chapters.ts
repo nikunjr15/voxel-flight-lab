@@ -32,6 +32,7 @@ export class Chapters {
   private readonly triggers: ScrollTrigger[] = [];
   private active = -1;
   private resolveQueued = false;
+  private reduced = false;
 
   constructor(
     mount: HTMLElement,
@@ -133,7 +134,8 @@ export class Chapters {
   }
 
   private watch(reduced: boolean): void {
-    for (const [n, s] of this.sections) {
+    this.reduced = reduced;
+    for (const s of this.sections.values()) {
       this.triggers.push(
         ScrollTrigger.create({
           trigger: s,
@@ -142,18 +144,6 @@ export class Chapters {
           onToggle: () => this.queueResolve(),
         }),
       );
-      // Text arrives as it scrolls in, and leaves the same way on the way back.
-      const inner = s.querySelector('.chapter__inner');
-      if (inner && n !== 0) {
-        gsap.from(inner.children, {
-          autoAlpha: 0,
-          y: reduced ? 0 : 28,
-          duration: reduced ? 0.4 : 0.9,
-          ease: 'expo.out',
-          stagger: reduced ? 0 : 0.07,
-          scrollTrigger: { trigger: inner, start: 'top 78%', toggleActions: 'play none none reverse' },
-        });
-      }
     }
 
     const cover = this.sections.get(0);
@@ -204,23 +194,53 @@ export class Chapters {
   }
 
   /**
-   * How much chapter text owns the screen, 0..1. Text takes over as it rises
-   * in from the bottom and gives way once its block has scrolled up past the
-   * upper third. Measured on the whole text block on the way out, so the
-   * introduction, which runs straight into chapter one, never lets the
-   * placard flash up in between.
+   * Chapter text and the exhibit placard take turns; they never share the
+   * screen. Both are scrubbed by scroll position, in fractions of the
+   * viewport height, on fixed marks:
+   *
+   *   on the way in   placard clears as the text's top rises 1.02 -> 0.92;
+   *                   text appears as its top rises 0.86 -> 0.68
+   *   on the way out  text clears as its bottom rises 0.36 -> 0.18;
+   *                   placard returns as it rises 0.14 -> 0.04
+   *
+   * The gaps between the marks are the pause between one leaving and the
+   * other arriving. The placard also needs an exhibit run under the middle
+   * of the screen, so it cannot surface between the introduction and
+   * chapter one, which have none between them.
    */
   private measure(): void {
-    const vh = window.innerHeight;
-    let cover = 0;
-    for (const inner of this.intros) {
-      const block = inner.parentElement ?? inner;
-      const b = block.getBoundingClientRect();
-      const t = inner.getBoundingClientRect();
-      if (b.top < vh * 0.5) cover = Math.max(cover, (b.bottom - vh * 0.4) / (vh * 0.2));
-      else cover = Math.max(cover, (vh * 0.95 - t.top) / (vh * 0.15));
+    const vh = window.innerHeight || 1;
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    // Read everything first, then write, so the styles never force a layout.
+    const boxes = this.intros.map((el) => el.getBoundingClientRect());
+    const runs = [...this.el.querySelectorAll<HTMLElement>('.chapter__exhibit')].map((el) => el.getBoundingClientRect());
+
+    let hold = 0;
+    boxes.forEach((r, k) => {
+      const top = r.top / vh;
+      const bottom = r.bottom / vh;
+      // How much this text holds the placard back.
+      hold = Math.max(hold, Math.min(clamp((1.02 - top) / 0.1), clamp((bottom - 0.04) / 0.1)));
+      const leave = clamp((bottom - 0.18) / 0.18);
+      const children = this.intros[k].children;
+      for (let i = 0; i < children.length; i++) {
+        // Lines arrive one after another, a few hundredths of a screen apart.
+        const enter = clamp((0.86 - i * 0.025 - top) / 0.18);
+        const v = Math.min(enter, leave);
+        const el = children[i] as HTMLElement;
+        el.style.opacity = v.toFixed(3);
+        el.style.visibility = v < 0.01 ? 'hidden' : '';
+        el.style.transform = this.reduced || v >= 1 ? '' : `translateY(${((1 - v) * 24).toFixed(1)}px)`;
+      }
+      // The panel behind the text on a phone fades with it.
+      this.intros[k].style.setProperty('--text', Math.min(clamp((0.86 - top) / 0.18), leave).toFixed(3));
+    });
+
+    let run = 0;
+    for (const r of runs) {
+      run = Math.max(run, Math.min(clamp((vh * 0.6 - r.top) / (vh * 0.1)), clamp((r.bottom - vh * 0.4) / (vh * 0.1))));
     }
-    this.events.onIntro(Math.min(1, Math.max(0, cover)));
+    this.events.onIntro(Math.max(hold, 1 - run));
   }
 
   /**

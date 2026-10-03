@@ -6,6 +6,7 @@ import {
   NearestFilter,
   RGBAFormat,
   Texture,
+  Vector4,
   type IUniform,
 } from 'three';
 import { MaterialKind } from './palette';
@@ -129,6 +130,29 @@ export class PartState {
   }
 }
 
+/**
+ * The part of the screen voxels may fly through during a morph, in
+ * normalised device coordinates: x min, x max, y min, y max. Outside it a
+ * voxel in flight shrinks away, so the cloud never crosses the text column.
+ * One uniform shared by every voxel material; the app sets it from the
+ * layout. Wide open by default.
+ */
+export const MORPH_BOUNDS: IUniform<Vector4> = { value: new Vector4(-9, 9, -9, 9) };
+
+export function setMorphBounds(xMin: number, xMax: number, yMin: number, yMax: number): void {
+  MORPH_BOUNDS.value.set(xMin, xMax, yMin, yMax);
+}
+
+/**
+ * A second keep-out, for the note cards in the bottom-left corner: the
+ * region left of x and below y, in the same coordinates. Off by default.
+ */
+export const MORPH_AVOID: IUniform<Vector4> = { value: new Vector4(-9, -9, 0, 0) };
+
+export function setMorphAvoid(xMax: number, yMax: number): void {
+  MORPH_AVOID.value.set(xMax, yMax, 0, 0);
+}
+
 export interface VoxelUniforms {
   uPartState: IUniform<Texture>;
   uMorph: IUniform<number>;
@@ -163,6 +187,8 @@ attribute vec3 aColor;
 uniform sampler2D uPartState;
 uniform float uMorph;
 uniform float uFade;
+uniform vec4 uBounds;
+uniform vec4 uAvoid;
 uniform float uExplode;
 uniform float uExplodeScale;
 varying float vAO;
@@ -245,6 +271,21 @@ const vertBody = (pass: Pass) => /* glsl */ `
 
   vec3 disp = (aScatter - iPos) * m;
   disp += pvec.xyz * (uExplode * pstate.b * uExplodeScale);
+
+  // Keep-out: a voxel in flight whose centre leaves the free part of the
+  // screen shrinks away instead of drifting over the text. A voxel at rest
+  // is never touched, so the assembled airframe cannot be clipped.
+  if (m > 0.0) {
+    vec4 cc = projectionMatrix * modelViewMatrix * vec4(iPos + disp, 1.0);
+    vec2 nd = cc.xy / max(cc.w, 1e-4);
+    const float band = 0.07;
+    float keep = smoothstep(uBounds.x, uBounds.x + band, nd.x)
+      * (1.0 - smoothstep(uBounds.y - band, uBounds.y, nd.x))
+      * smoothstep(uBounds.z, uBounds.z + band, nd.y)
+      * (1.0 - smoothstep(uBounds.w - band, uBounds.w, nd.y));
+    keep *= 1.0 - (1.0 - smoothstep(uAvoid.x - band, uAvoid.x, nd.x)) * (1.0 - smoothstep(uAvoid.y - band, uAvoid.y, nd.y));
+    transformed *= mix(1.0, keep, clamp(m * 3.0, 0.0, 1.0));
+  }
   transformed += disp;
 
   // A voxel this pass does not draw collapses to a point, so it rasterises
@@ -361,6 +402,8 @@ export function createVoxelMaterial({ kind, uniforms, ghost = false }: VoxelMate
     shader.uniforms.uPartState = uniforms.uPartState;
     shader.uniforms.uMorph = uniforms.uMorph;
     shader.uniforms.uFade = uniforms.uFade;
+    shader.uniforms.uBounds = MORPH_BOUNDS;
+    shader.uniforms.uAvoid = MORPH_AVOID;
     shader.uniforms.uExplode = uniforms.uExplode;
     shader.uniforms.uExplodeScale = uniforms.uExplodeScale;
     shader.uniforms.uAOStrength = uniforms.uAOStrength;

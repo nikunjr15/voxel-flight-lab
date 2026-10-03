@@ -6,6 +6,7 @@ import { createContactShadow } from '../engine/renderer/ContactShadow';
 import { BackdropClouds } from '../engine/renderer/BackdropClouds';
 import { buildClient } from '../engine/build/client';
 import { VoxelModel } from '../engine/voxel/VoxelModel';
+import { setMorphAvoid, setMorphBounds } from '../engine/voxel/material';
 import { Rig } from '../scenes/rig/Rig';
 import { Gallery, GALLERY_SETS } from '../scenes/rig/Gallery';
 import { PARTS } from '../engine/voxel/parts';
@@ -666,6 +667,49 @@ export class App {
     }
     this.applyCover();
     this.scheduleHistory();
+    this.scheduleMorphBounds();
+  }
+
+  private boundsTimer = 0;
+
+  private scheduleMorphBounds(): void {
+    window.clearTimeout(this.boundsTimer);
+    this.boundsTimer = window.setTimeout(() => this.updateMorphBounds(), 380);
+  }
+
+  /**
+   * Tells the voxel shader where a morph's flying voxels may go: right of the
+   * text column on a wide screen, and between the top strip and the toolbar;
+   * on a phone, the band between the placard and the notes. Measured from
+   * the live layout, so a long name or a resize moves the line with it.
+   */
+  private updateMorphBounds(): void {
+    if (!this.chrome) return;
+    const W = window.innerWidth || 1;
+    const H = window.innerHeight || 1;
+    const rect = (sel: string): DOMRect | null => document.querySelector(sel)?.getBoundingClientRect() ?? null;
+    const nx = (px: number) => (px / W) * 2 - 1;
+    const ny = (py: number) => 1 - (py / H) * 2;
+    const top = rect('.chrome__top');
+    const tools = rect('.chrome__tools');
+    const yMax = top ? ny(top.bottom + 8) : 1;
+    const yMin = tools ? ny(tools.top - 8) : -1;
+    if (W >= 760 && W / H > 1.25) {
+      // The text column: the placard, or chapter text, whichever is wider.
+      const title = rect('.chrome__main');
+      const inner = rect('.chapter__inner');
+      const right = Math.max(title?.right ?? 0, inner ? inner.left + inner.width : 0) + 24;
+      setMorphBounds(nx(right), 9, yMin, yMax);
+      // The note cards run further right than the title, along the bottom.
+      const notes = rect('.chrome__notes');
+      if (notes && notes.width > 0) setMorphAvoid(nx(notes.right + 16), ny(notes.top - 12));
+      else setMorphAvoid(-9, -9);
+    } else {
+      setMorphAvoid(-9, -9);
+      const title = rect('.chrome__main');
+      const notes = rect('.chrome__notes');
+      setMorphBounds(-9, 9, notes ? ny(notes.top - 8) : yMin, title ? ny(title.bottom + 8) : yMax);
+    }
   }
 
   /** Back to the overview: changing aircraft or chapter starts from the top. */
@@ -775,6 +819,7 @@ export class App {
 
   private readonly resize = (): void => {
     this.stage.resize(window.innerWidth, window.innerHeight);
+    this.scheduleMorphBounds();
     // Re-fit after the resize settles, so a drag-resize does not retween
     // the camera on every frame.
     window.clearTimeout(this.reframeTimer);
@@ -880,6 +925,7 @@ export class App {
       this.prefetchAround(config);
     }
     this.stats.task(`present ${config.id}`, performance.now() - t0);
+    this.scheduleMorphBounds();
 
     this.chrome?.setBlocks(data.total);
     this.stats.setExtra(
