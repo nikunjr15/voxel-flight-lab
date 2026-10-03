@@ -1,3 +1,13 @@
+/*
+ * Where everything sits. Components style themselves in components.css; this
+ * file only places them.
+ *
+ * Five rows on every screen: top strip, title, notes beside the gizmo, the
+ * toolbar on a lane of its own, the footer. Giving the toolbar its own lane is
+ * what lets the cards, the pill and the gizmo share the bottom of the screen
+ * at any width without one ever landing on another.
+ */
+
 #stage {
   position: fixed;
   inset: 0;
@@ -11,9 +21,18 @@
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
-  gap: var(--gap);
-  padding: var(--pad);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    'top   top'
+    'title .'
+    'notes inspect'
+    'tools tools'
+    'foot  foot';
+  column-gap: var(--gap);
+  padding:
+    max(var(--pad), env(safe-area-inset-top)) max(var(--pad), env(safe-area-inset-right))
+    max(calc(var(--pad) * 0.7), env(safe-area-inset-bottom)) max(var(--pad), env(safe-area-inset-left));
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--dur-slow) var(--ease-out-quart);
@@ -23,426 +42,101 @@
   opacity: 1;
 }
 
+/* The canvas takes every drag that is not on a control. */
 .chrome a,
-.chrome button {
+.chrome button,
+.chrome__notes {
   pointer-events: auto;
 }
-
-/* ---------- top strip ---------- */
 
 .chrome__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap);
+  grid-area: top;
 }
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: var(--ink);
-}
-
-.brand__mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--ink);
-  color: var(--bg);
-}
-
-.brand__word {
-  font-size: var(--t-mono);
-  font-weight: 500;
-  letter-spacing: var(--ls-wide);
-  text-transform: uppercase;
-}
-
-.meta {
-  margin: 0;
-  text-align: right;
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.meta__line {
-  margin: 0 0 3px;
-}
-
-.meta__country {
-  color: var(--accent-ink);
-}
-
-/* ---------- title block ---------- */
 
 .chrome__main {
+  grid-area: title;
   align-self: center;
   justify-self: start;
-  max-width: min(46ch, 70vw);
+  max-width: min(38rem, 46vw);
+  outline: none;
 }
 
-.eyebrow {
-  margin: 0 0 clamp(10px, 1.1vw, 18px);
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--ls-wide);
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.display {
-  margin: 0;
-  font-weight: 300;
-  font-size: clamp(2.6rem, 6.6vw, 6rem);
-  line-height: 0.94;
-  letter-spacing: -0.035em;
-  color: var(--ink);
-}
-
-.display__sup {
-  font-family: var(--font-mono);
-  font-size: 0.17em;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  vertical-align: super;
-  color: var(--ink-3);
-  margin-left: 0.35em;
-}
-
-.subtitle {
-  margin: clamp(14px, 1.6vw, 22px) 0 0;
-  font-size: var(--t-sub);
-  font-weight: 300;
-  line-height: 1.55;
-  color: var(--ink-2);
-  max-width: 44ch;
-}
-
-.colourbar {
-  display: flex;
-  gap: 4px;
-  margin-top: clamp(14px, 1.5vw, 20px);
-}
-
-.colourbar span {
-  display: block;
-  width: 26px;
-  height: 3px;
-  border-radius: 2px;
-}
-
-/* ---------- bottom row ---------- */
-
-.chrome > .notes {
-  grid-row: 3;
+.chrome__notes {
+  grid-area: notes;
+  align-self: end;
   justify-self: start;
-}
-
-.notes {
-  display: flex;
-  gap: clamp(14px, 1.6vw, 26px);
-  max-width: min(640px, 58vw);
-  pointer-events: auto;
-}
-
-.note {
-  position: relative;
-  padding-left: 12px;
-  max-width: 24ch;
-  border-left: 1px solid var(--line-strong);
-}
-
-.note::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 0;
-  width: 1px;
-  height: 18px;
-  background: var(--accent);
-}
-
-.note h3 {
-  margin: 0 0 7px;
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  font-weight: 500;
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
-.note__n {
-  color: var(--ink-3);
-}
-
-.note p {
-  margin: 0;
-  font-size: var(--t-body);
-  font-weight: 300;
-  line-height: 1.5;
-  color: var(--ink-2);
+  max-width: min(52rem, 64vw);
 }
 
 .inspect {
-  position: fixed;
-  right: var(--pad);
-  bottom: calc(var(--pad) + 46px);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--ink-2);
+  grid-area: inspect;
+  align-self: end;
+  justify-self: end;
 }
 
-.inspect__label {
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
+.chrome__tools {
+  grid-area: tools;
+  justify-self: center;
+  max-width: 100%;
+  margin-top: clamp(14px, 1.8vh, 22px);
 }
-
-.toolbar {
-  position: fixed;
-  left: 50%;
-  bottom: calc(var(--pad) + 42px);
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px;
-  border-radius: 999px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 10px 30px rgba(22, 25, 28, 0.07);
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 15px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-2);
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-out-quart),
-    color var(--dur-fast) var(--ease-out-quart);
-}
-
-.chip:hover {
-  background: rgba(22, 25, 28, 0.05);
-}
-
-.chip__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ink-4);
-  transition: background var(--dur-fast) var(--ease-out-quart);
-}
-
-.chip.is-on {
-  background: var(--ink);
-  color: var(--bg);
-}
-
-.chip.is-on .chip__dot {
-  background: var(--accent);
-}
-
-/* ---------- footer ---------- */
 
 .chrome__foot {
-  grid-row: 4;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap);
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
-  color: var(--ink-3);
+  grid-area: foot;
+  margin-top: clamp(12px, 1.6vh, 18px);
 }
 
-.chrome__foot p {
-  margin: 0;
-}
+/* ---------- phones ---------- */
 
-.foot__left span {
-  color: var(--ink);
-}
+@media (max-width: 759px) {
+  .chrome {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      'top'
+      'title'
+      '.'
+      'notes'
+      'tools'
+      'foot';
+  }
 
-.foot__right {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.foot__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-/* ---------- dev ---------- */
-
-.dev-stats {
-  position: fixed;
-  left: var(--pad);
-  top: calc(var(--pad) + 40px);
-  z-index: 10;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(22, 25, 28, 0.86);
-  color: #f2f4f5;
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: 0.04em;
-  pointer-events: none;
-}
-
-/* ---------- narrow screens ---------- */
-
-@media (max-width: 860px) {
   .chrome__main {
+    align-self: start;
     max-width: none;
+    margin-top: clamp(18px, 4vh, 34px);
   }
 
-  .notes {
+  .chrome__notes {
     max-width: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 4px;
+    justify-self: stretch;
   }
 
-  .notes::-webkit-scrollbar {
+  /* Specific enough to beat the component rule, which loads later. A hidden
+     item whose grid-area is not in this template would otherwise make the
+     grid invent tracks for it and squeeze everything into half the width. */
+  .chrome > .inspect {
     display: none;
   }
 
-  .note {
-    flex: 0 0 auto;
-    min-width: 21ch;
+  /* The pill becomes a strip that scrolls sideways under the thumb. */
+  .chrome__tools {
+    justify-self: stretch;
   }
 
-  .inspect {
+  .meta__chapter {
+    display: none;
+  }
+}
+
+/* Landscape phones: there is no room for prose, only the name and controls. */
+@media (max-height: 520px) and (max-width: 1000px) {
+  .subtitle,
+  .chrome__notes {
     display: none;
   }
 
-  .toolbar {
-    bottom: calc(var(--pad) + 38px);
-    max-width: calc(100vw - var(--pad) * 2);
-    overflow-x: auto;
-    scrollbar-width: none;
+  .chrome__main {
+    align-self: start;
   }
-}
-
-/* ---------- dev test rig ---------- */
-
-.rig-labels {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.rig-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 190px;
-  text-align: center;
-  transition: opacity var(--dur-fast) linear;
-}
-
-.rig-label b {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  font-weight: 500;
-  letter-spacing: var(--ls-mono);
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
-.rig-label span {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 300;
-  line-height: 1.35;
-  color: var(--ink-3);
-}
-
-/* Concept tag. Deliberately loud enough that it cannot be read past. */
-.rig-label b i {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 5px;
-  border-radius: 2px;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 9px;
-  font-style: normal;
-  letter-spacing: var(--ls-mono);
-  vertical-align: 1px;
-}
-
-.chrome[hidden] {
-  display: none;
-}
-
-
-/* Gallery captions sit shoulder to shoulder, so they are fixed width and
-   never wrap: two spec lines, each on exactly one line. */
-.rig-labels--gallery .rig-label {
-  /* Width is set per caption from its projected slot; see Gallery. */
-  width: 150px;
-}
-
-/* The name may wrap onto a second line; the spec lines never do, so the
-   block keeps a predictable shape. */
-/* The caption wraps at the spaces around the em dash and nowhere else.
-   Designations carry hyphens, and a hyphen is a wrap opportunity, so a tight
-   slot used to split "F-35A" into "F-" and "35A" on two lines. The name is
-   held together explicitly rather than relying on word-break, which does not
-   cover hyphens. */
-.rig-labels--gallery .rig-label b {
-  white-space: normal;
-  overflow-wrap: normal;
-}
-
-.rig-label b u {
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.rig-labels--gallery .rig-label span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.rig-labels--gallery .rig-label span {
-  display: block;
-  margin-top: 2px;
-  font-size: 10px;
-  line-height: 1.35;
 }

@@ -2,12 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Voxel Flight Lab</title>
     <meta
       name="description"
       content="An interactive museum of fighter jet evolution, with every airframe generated as voxels in code."
     />
+    <meta name="theme-color" content="#e9eced" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,11 +17,12 @@
     />
   </head>
   <body>
+    <a class="skip" href="#exhibit">Skip to exhibit text</a>
     <canvas id="stage" aria-hidden="true"></canvas>
 
     <div class="chrome">
       <header class="chrome__top">
-        <a class="brand" href="#exhibit">
+        <a class="brand" href="#exhibit" aria-label="Voxel Flight Lab, home">
           <span class="brand__mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
               <path
@@ -33,62 +35,47 @@
         </a>
 
         <div class="meta">
-          <p class="meta__line">Airframe collection</p>
+          <p class="meta__line">Airframe collection<span class="meta__chapter"> · <span data-field="chapter"></span></span></p>
           <p class="meta__line">
-            Exhibit <span data-field="exhibit">004</span> /
-            <span class="meta__country" data-field="country">United States</span>
+            <span class="meta__word">Exhibit </span><span data-field="exhibit">001</span> /
+            <span class="meta__country" data-field="country"></span>
           </p>
         </div>
       </header>
 
-      <main class="chrome__main" id="exhibit">
-        <p class="eyebrow" data-field="category">Single-engine multirole fighter</p>
+      <main class="chrome__main" id="exhibit" tabindex="-1">
+        <p class="eyebrow" data-field="category"></p>
         <h1 class="display">
-          <span data-field="name">F-16 Fighting Falcon</span>
-          <sup class="display__sup" data-field="exhibit">004</sup>
+          <span data-field="name">Voxel Flight Lab</span><sup class="display__sup" aria-label="exhibit number"></sup>
         </h1>
         <p class="subtitle">
-          <span data-field="subtitle-a"></span><br />
+          <span data-field="subtitle-a"></span>
           <span data-field="subtitle-b"></span>
         </p>
-        <div class="colourbar" data-field="colourbar" aria-hidden="true"></div>
+        <div class="colourbar" data-field="colourbar" role="img"></div>
+        <div class="sr-only" data-mount="spec"></div>
       </main>
 
-      <section class="notes" data-field="annotations" aria-label="Exhibit notes"></section>
+      <section class="chrome__notes" data-mount="notes"></section>
 
-      <div class="inspect">
-        <svg class="gizmo" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
-          <g stroke-width="1.4" fill="none" stroke-linecap="round">
-            <path stroke="#c0472b" d="M20 26 L33 31" />
-            <path stroke="#2f6f52" d="M20 26 L20 10" />
-            <path stroke="#36506e" d="M20 26 L7 31" />
-          </g>
-          <circle cx="20" cy="26" r="1.8" fill="#1b1f23" />
-        </svg>
-        <span class="inspect__label">Inspect in 360</span>
-      </div>
+      <button class="inspect" type="button" aria-pressed="false" aria-label="Inspect in 360: free orbit">
+        <span class="inspect__label" aria-hidden="true">Inspect in 360</span>
+      </button>
 
-      <div class="toolbar" role="group" aria-label="Viewer controls">
-        <button
-          class="chip"
-          type="button"
-          data-toggle="orbit"
-          aria-pressed="false"
-          aria-label="Toggle free orbit"
-        >
-          <span class="chip__dot" aria-hidden="true"></span>Orbit
-        </button>
-      </div>
+      <nav class="chrome__tools" data-mount="toolbar"></nav>
 
       <footer class="chrome__foot">
         <p class="foot__left">
-          <span>Drag</span> rotate <span>Scroll</span> zoom
+          <span class="foot__key">Drag</span> rotate
+          <span class="foot__key" data-field="zoom-verb">Scroll</span> zoom
         </p>
         <p class="foot__right">
           <span class="foot__dot" aria-hidden="true"></span>
-          <span data-field="blocks">0 blocks</span> / flight config A
+          <span data-field="blocks">0 blocks</span><span class="foot__config"> / flight config A</span>
         </p>
       </footer>
+
+      <p class="sr-only" aria-live="polite" data-field="live"></p>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

@@ -1,0 +1,94 @@
+/* Review views: the primitive test rig and the gallery. Dev and preview builds only. */
+
+/* ---------- dev test rig ---------- */
+
+.rig-labels {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rig-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 190px;
+  text-align: center;
+  transition: opacity var(--dur-fast) linear;
+}
+
+.rig-label b {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.rig-label span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+/* Concept tag. Deliberately loud enough that it cannot be read past. */
+.rig-label b i {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: var(--ls-mono);
+  vertical-align: 1px;
+}
+
+.chrome[hidden] {
+  display: none;
+}
+
+
+/* Gallery captions sit shoulder to shoulder, so they are fixed width and
+   never wrap: two spec lines, each on exactly one line. */
+.rig-labels--gallery .rig-label {
+  /* Width is set per caption from its projected slot; see Gallery. */
+  width: 150px;
+}
+
+/* The name may wrap onto a second line; the spec lines never do, so the
+   block keeps a predictable shape. */
+/* The caption wraps at the spaces around the em dash and nowhere else.
+   Designations carry hyphens, and a hyphen is a wrap opportunity, so a tight
+   slot used to split "F-35A" into "F-" and "35A" on two lines. The name is
+   held together explicitly rather than relying on word-break, which does not
+   cover hyphens. */
+.rig-labels--gallery .rig-label b {
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+.rig-label b u {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.rig-labels--gallery .rig-label span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rig-labels--gallery .rig-label span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.35;
+}

@@ -9,10 +9,12 @@ import { Rig } from '../scenes/rig/Rig';
 import { Gallery, GALLERY_SETS } from '../scenes/rig/Gallery';
 import { PARTS } from '../engine/voxel/parts';
 import { CameraRig, CameraPreset } from '../scenes/CameraRig';
-import { AIRCRAFT } from '../aircraft';
+import { AIRCRAFT, byId } from '../aircraft';
 import type { AircraftConfig } from '../aircraft/types';
-import { COUNTRIES } from '../aircraft/countries';
 import { DevStats } from '../ui/devstats';
+import { Chrome } from '../ui/Chrome';
+import { MODES } from '../ui/Toolbar';
+import { createViewerStore, type ModeId } from './store';
 
 /** `?rig=1` swaps the exhibit for the primitive test bench. Review builds only. */
 const RIG_MODE = __REVIEW__ && new URLSearchParams(location.search).get('rig') === '1';
@@ -93,6 +95,7 @@ function fitDistance(
 /** Direction the hero shot looks from: three-quarter, slightly above. */
 const HERO_DIR = new Vector3(0.52, 0.3, 1).normalize();
 const HERO_FOV = 31;
+const PLAN_FOV = 30;
 
 const prefersReducedMotion = (): boolean =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -116,6 +119,8 @@ export class App {
   private readonly clouds = new BackdropClouds();
   private readonly pivot = new Group();
   private readonly stats = new DevStats();
+  private readonly store = createViewerStore();
+  private chrome: Chrome | null = null;
 
   private model: VoxelModel | null = null;
   private bench: Rig | null = null;
@@ -140,9 +145,14 @@ export class App {
       reducedMotion: this.reduced,
     });
 
-    this.config = AIRCRAFT[0];
+    // `?id=` opens a particular exhibit; chapters will replace this in phase 5.
+    this.config = byId(new URLSearchParams(location.search).get('id') ?? '') ?? AIRCRAFT[0];
     this.resize();
     this.rig.set(this.heroPreset());
+    if (!GALLERY_SET && !RIG_MODE) {
+      const root = document.querySelector<HTMLElement>('.chrome');
+      if (root) this.chrome = new Chrome(root, this.store);
+    }
     this.bindEvents();
 
     if (GALLERY_SET) void this.loadGallery(GALLERY_SET);
@@ -320,14 +330,48 @@ export class App {
     const visibleW = 2 * dist * Math.tan(hFov / 2);
     const visibleH = 2 * dist * Math.tan(vFov / 2);
     const target = right.multiplyScalar(wide ? -visibleW * 0.15 : 0);
-    // Raising the target drops the model on screen: on a narrow viewport that
-    // clears the title above it and leaves the note cards below alone.
-    target.y = wide ? 0 : visibleH * 0.14;
+    // On a narrow viewport the free space is the band between the title and
+    // the notes, which sits a touch below the middle of the screen.
+    target.y = wide ? 0 : visibleH * 0.02;
 
     return {
       position: [pos.x + target.x, pos.y + target.y, pos.z + target.z],
       target: [target.x, target.y, target.z],
       fov: HERO_FOV,
+    };
+  }
+
+  /**
+   * Top-down, nose up, fitted to the part of the screen the chrome leaves
+   * free: right of the title on a wide screen, between the title and the
+   * notes on a narrow one. Centred on the whole viewport, a delta lands on the
+   * note cards and runs under the toolbar.
+   */
+  private planPreset(): CameraPreset {
+    const size = this.modelSize;
+    const aspect = this.stage.camera.aspect || 1;
+    const vFov = (PLAN_FOV * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const wide = aspect > 1.25;
+    // Share of the screen the footprint may take: wide screens give the left
+    // ~40% to the placard; every screen loses top and bottom to the chrome.
+    const freeW = wide ? 0.54 : 0.9;
+    // On a phone the free band between title and notes is about a third.
+    const freeH = wide ? 0.62 : 0.34;
+    const distW = (size.x * 0.5) / (Math.tan(hFov / 2) * freeW);
+    const distH = (size.z * 0.5) / (Math.tan(vFov / 2) * freeH);
+    const dist = Math.max(distW, distH);
+    const visibleW = 2 * dist * Math.tan(hFov / 2);
+    const visibleH = 2 * dist * Math.tan(vFov / 2);
+    // Looking down with the nose up, screen right is world -X and screen up is
+    // world +Z. Moving the target the other way moves the aircraft that way.
+    const tx = wide ? visibleW * 0.2 : 0;
+    const tz = wide ? -visibleH * 0.04 : visibleH * 0.025;
+    return {
+      position: [tx, dist, tz],
+      target: [tx, 0, tz],
+      fov: PLAN_FOV,
+      up: [0, 0, 1],
     };
   }
 
@@ -342,15 +386,44 @@ export class App {
       this.rig.setReducedMotion(e.matches);
     });
 
-    const orbitToggle = document.querySelector<HTMLButtonElement>('[data-toggle="orbit"]');
-    orbitToggle?.addEventListener('click', () => {
-      const next = !this.rig.orbitEnabled;
-      this.rig.setOrbit(next);
-      orbitToggle.setAttribute('aria-pressed', String(next));
-      orbitToggle.classList.toggle('is-on', next);
-      this.idle = !next;
-      if (!next) this.rig.apply(this.heroPreset(), 1.2);
+    this.store.on('orbit', (on) => {
+      this.rig.setOrbit(on);
+      this.idle = !on && this.store.get('mode') !== 'plan';
+      if (!on) this.applyMode(this.store.get('mode'));
     });
+    this.store.on('mode', (mode) => {
+      // Choosing a view hands the camera back from free orbit.
+      if (this.store.get('orbit')) this.store.set('orbit', false);
+      this.applyMode(mode);
+    });
+  }
+
+  /**
+   * Camera and turntable for a view mode. Overview and plan are live; the
+   * cockpit, engines, weapons and x-ray modes arrive in phase 4, and until
+   * then hold the overview shot.
+   */
+  private applyMode(mode: ModeId): void {
+    if (this.refit) return;
+    if (mode === 'plan') {
+      this.idle = false;
+      this.rig.setParallax(false);
+      this.rig.apply(this.planPreset(), 1.3);
+      return;
+    }
+    this.idle = true;
+    this.rig.setParallax(true);
+    this.rig.apply(this.heroPreset(), 1.2);
+  }
+
+  /** Steps to the previous or next exhibit. Chapters and morphs come in phase 5. */
+  private step(delta: number): void {
+    const i = AIRCRAFT.indexOf(this.config);
+    const next = AIRCRAFT[(i + delta + AIRCRAFT.length) % AIRCRAFT.length];
+    const url = new URL(location.href);
+    url.searchParams.set('id', next.id);
+    history.replaceState(null, '', url);
+    void this.load(next).then(() => this.applyMode(this.store.get('mode')));
   }
 
   private reframeTimer = 0;
@@ -375,7 +448,7 @@ export class App {
         return;
       }
       if (RIG_MODE) return;
-      this.rig.apply(this.heroPreset(), 0.6);
+      this.rig.apply(this.store.get('mode') === 'plan' ? this.planPreset() : this.heroPreset(), 0.6);
     }, 160);
   };
 
@@ -386,12 +459,22 @@ export class App {
   };
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'f' || e.key === 'F') this.stats.toggle();
+    if (!this.chrome) return;
     if (e.key === 'Escape') {
-      this.rig.setOrbit(false);
-      this.rig.apply(this.heroPreset(), 1.2);
-      this.idle = true;
+      this.store.set('orbit', false);
+      this.store.set('mode', 'overview');
+      this.applyMode('overview');
+      return;
     }
+    const n = Number(e.key);
+    if (Number.isInteger(n) && n >= 1 && n <= MODES.length) {
+      this.store.set('mode', MODES[n - 1].id);
+      return;
+    }
+    if (e.key === 'ArrowRight') this.step(1);
+    if (e.key === 'ArrowLeft') this.step(-1);
   };
 
   /**
@@ -402,6 +485,7 @@ export class App {
   async load(config: AircraftConfig): Promise<void> {
     const token = ++this.loadToken;
     this.config = config;
+    this.chrome?.show(config);
 
     const data = await buildClient.build(config, { density: densityForViewport() });
     if (token !== this.loadToken) return;
@@ -423,7 +507,10 @@ export class App {
     this.pivot.add(this.shadow);
 
     this.model = model;
-    this.updateChrome(data.total, data.buildMs);
+    this.chrome?.setBlocks(data.total);
+    this.stats.setExtra(
+      `${data.total.toLocaleString('en-US')} voxels · build ${data.buildMs.toFixed(0)} ms · ${model.info.drawCalls} draws`,
+    );
 
     if (import.meta.env.DEV) {
       const breakdown = PARTS.map((id, i) => [id, data.partCounts[i]] as const)
@@ -436,52 +523,6 @@ export class App {
       );
       console.info(`[lab] parts: ${breakdown}`);
     }
-  }
-
-  private updateChrome(voxels: number, buildMs: number): void {
-    const c = this.config;
-    const country = COUNTRIES[c.spec.country];
-    const set = (sel: string, text: string) => {
-      for (const el of document.querySelectorAll(sel)) el.textContent = text;
-    };
-    set('[data-field="name"]', c.name);
-    set('[data-field="exhibit"]', c.exhibitNo);
-    set('[data-field="category"]', c.copy.category);
-    set('[data-field="country"]', country.name.toUpperCase());
-    set('[data-field="blocks"]', `${voxels.toLocaleString('en-US')} BLOCKS`);
-    set('[data-field="subtitle-a"]', c.copy.subtitle[0]);
-    set('[data-field="subtitle-b"]', c.copy.subtitle[1]);
-
-    const bar = document.querySelector<HTMLElement>('[data-field="colourbar"]');
-    if (bar) {
-      bar.innerHTML = '';
-      for (const colour of country.bar) {
-        const seg = document.createElement('span');
-        seg.style.background = colour;
-        bar.appendChild(seg);
-      }
-    }
-
-    const notes = document.querySelector<HTMLElement>('[data-field="annotations"]');
-    if (notes) {
-      notes.innerHTML = '';
-      for (const a of c.copy.annotations) {
-        const card = document.createElement('article');
-        card.className = 'note';
-        const h = document.createElement('h3');
-        h.innerHTML = `<span class="note__n">${a.n}</span> — ${a.title}`;
-        const p = document.createElement('p');
-        p.textContent = a.body;
-        card.append(h, p);
-        notes.appendChild(card);
-      }
-    }
-
-    this.stats.setExtra(
-      `${voxels.toLocaleString('en-US')} voxels · build ${buildMs.toFixed(0)} ms · ${
-        this.model?.info.drawCalls ?? 0
-      } draws`,
-    );
   }
 
   start(): void {
@@ -506,10 +547,20 @@ export class App {
       this.pivot.position.y = Math.sin(t * 0.55) * 0.13;
       this.pivot.rotation.z = Math.sin(t * 0.37) * 0.018;
       this.pivot.rotation.x = Math.sin(t * 0.29) * 0.012;
+    } else if (this.chrome && !this.store.get('orbit')) {
+      // Settle square to the camera, the short way round. Nothing snaps.
+      const home = Math.round(this.spin / (Math.PI * 2)) * Math.PI * 2;
+      const k = 1 - Math.exp(-dt * 4);
+      this.spin += (home - this.spin) * k;
+      this.pivot.rotation.y = this.spin;
+      this.pivot.rotation.x *= 1 - k;
+      this.pivot.rotation.z *= 1 - k;
+      this.pivot.position.y *= 1 - k;
     }
 
     this.rig.update(dt);
     this.stage.render(t);
+    this.chrome?.update(this.stage.camera, this.pivot);
 
     const overlay = this.bench ?? this.gallery;
     if (overlay) {

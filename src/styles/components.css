@@ -1,0 +1,565 @@
+/* ---------- accessibility helpers ---------- */
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: fixed;
+  left: var(--pad);
+  top: -60px;
+  z-index: 20;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: top var(--dur) var(--ease-out-expo);
+}
+
+.skip:focus {
+  top: var(--pad);
+}
+
+/* ---------- top strip ---------- */
+
+.chrome__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brand__mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.brand__word {
+  font-size: var(--t-mono);
+  font-weight: 500;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+.meta {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.meta__line {
+  margin: 0 0 4px;
+}
+
+.meta__country {
+  color: var(--accent-ink);
+}
+
+/* ---------- title block ---------- */
+
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 clamp(10px, 1.2vw, 18px);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tag-concept {
+  padding: 2px 6px 1px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  letter-spacing: var(--ls-mono);
+}
+
+.display {
+  margin: 0;
+  font-weight: 300;
+  font-size: clamp(2.6rem, 6.2vw, 6.4rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.is-long .display {
+  font-size: clamp(2.3rem, 5vw, 5.2rem);
+}
+
+.display__sup {
+  font-family: var(--font-mono);
+  font-size: max(0.6rem, 0.15em);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  vertical-align: super;
+  color: var(--ink-3);
+  margin-left: 0.4em;
+}
+
+.subtitle {
+  margin: clamp(14px, 1.6vw, 22px) 0 0;
+  font-size: var(--t-sub);
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.subtitle span {
+  display: block;
+}
+
+.colourbar {
+  display: flex;
+  gap: 4px;
+  margin-top: clamp(14px, 1.5vw, 20px);
+}
+
+.colourbar span {
+  display: block;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Aircraft change: out up and fade, then in from below. Staggered by row so
+   the block reads top to bottom rather than blinking as one. */
+.chrome__main > * {
+  transition:
+    opacity var(--dur) var(--ease-out-quart),
+    transform var(--dur-slow) var(--ease-out-expo);
+}
+
+.chrome__main > :nth-child(2) {
+  transition-delay: 40ms;
+}
+
+.chrome__main > :nth-child(3) {
+  transition-delay: 80ms;
+}
+
+.chrome__main > :nth-child(4) {
+  transition-delay: 110ms;
+}
+
+.chrome__main.is-leaving > * {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition-duration: var(--dur-fast), var(--dur-fast);
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome__main > *,
+  .chrome__main.is-leaving > * {
+    transform: none;
+  }
+}
+
+/* ---------- notes ---------- */
+
+.notes__index {
+  display: none;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.notes__num {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out-quart),
+    background var(--dur-fast) var(--ease-out-quart);
+}
+
+.notes__num:hover {
+  color: var(--ink);
+}
+
+.notes__num[aria-current='true'] {
+  color: var(--ink);
+  background: rgba(22, 25, 28, 0.06);
+}
+
+.notes__cards {
+  display: flex;
+  gap: clamp(16px, 1.8vw, 28px);
+}
+
+.note {
+  position: relative;
+  flex: 0 1 15.5rem;
+  min-width: 0;
+  padding-left: 13px;
+  border-left: 1px solid var(--line-strong);
+}
+
+.note::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--accent);
+}
+
+.note__title {
+  margin: 0 0 7px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.note__n {
+  color: var(--ink-3);
+}
+
+.note p {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.note.is-active {
+  animation: note-in var(--dur) var(--ease-out-expo);
+}
+
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Three cards side by side need width and height. Without either, the notes
+   collapse to one card and a row of numbers. Lives here, after the base rules,
+   so it wins on source order. */
+@media (max-width: 1179px), (max-height: 759px) {
+  .notes__index {
+    display: flex;
+  }
+
+  .note {
+    flex-basis: 26rem;
+  }
+
+  .note:not(.is-active) {
+    display: none;
+  }
+}
+
+/* ---------- inspect: gizmo and label ---------- */
+
+.inspect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out-quart);
+}
+
+.inspect:hover,
+.inspect.is-on {
+  color: var(--ink);
+}
+
+.inspect__label {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+}
+
+.inspect.is-on .inspect__label {
+  color: var(--accent-ink);
+}
+
+.gizmo {
+  display: block;
+  overflow: visible;
+}
+
+.gizmo__ring {
+  fill: rgba(255, 255, 255, 0.35);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.inspect.is-on .gizmo__ring {
+  stroke: var(--accent);
+}
+
+.gizmo__hub {
+  fill: var(--ink);
+}
+
+.gizmo__tip {
+  font-family: var(--font-mono);
+  font-size: 5.5px;
+  font-weight: 500;
+  text-anchor: middle;
+}
+
+/* ---------- toolbar ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 12px 32px rgba(22, 25, 28, 0.08);
+}
+
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar__rule {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--line-strong);
+}
+
+.tab,
+.chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease-out-expo),
+    color var(--dur-fast) var(--ease-out-quart);
+}
+
+.tab svg {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
+.tab:hover,
+.chip:hover {
+  background: rgba(22, 25, 28, 0.05);
+  color: var(--ink);
+}
+
+/* The one dark pill on screen. */
+.tab.is-active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.tab.is-active svg {
+  opacity: 1;
+}
+
+.chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  transition:
+    background var(--dur-fast) var(--ease-out-quart),
+    box-shadow var(--dur) var(--ease-out-expo);
+}
+
+.chip.is-on {
+  color: var(--ink);
+}
+
+.chip.is-on .chip__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 106, 43, 0.18);
+}
+
+@media (max-width: 759px) {
+  .toolbar {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    /* Fade the ends so it is obvious there is more to scroll to. */
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab,
+  .chip {
+    scroll-snap-align: center;
+    padding: 8px 12px;
+  }
+}
+
+/* ---------- footer ---------- */
+
+.chrome__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.chrome__foot p {
+  margin: 0;
+}
+
+.foot__key {
+  color: var(--ink);
+}
+
+.foot__key + .foot__key,
+.foot__left .foot__key:not(:first-child) {
+  margin-left: 0.9em;
+}
+
+.foot__right {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.foot__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@media (max-width: 759px) {
+  /* One line each side or nothing: the config label is the first to go. */
+  .foot__config {
+    display: none;
+  }
+
+  .chrome__foot {
+    white-space: nowrap;
+  }
+
+  /* Two fixed lines suit a wide placard; on a phone the sentence reflows. */
+  .subtitle span {
+    display: inline;
+  }
+
+  /* Brand and exhibit line share 343px: both stay on one line, and the
+     word "Exhibit" is the part that goes. */
+  .brand__word,
+  .meta__line {
+    white-space: nowrap;
+  }
+
+  .meta__word {
+    display: none;
+  }
+}
+
+/* ---------- spec table (screen readers now; visible fallback later) ---------- */
+
+.spec caption {
+  text-align: left;
+}
+
+/* ---------- dev ---------- */
+
+.dev-stats {
+  position: fixed;
+  left: var(--pad);
+  top: calc(var(--pad) + 40px);
+  z-index: 10;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(22, 25, 28, 0.86);
+  color: #f2f4f5;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
