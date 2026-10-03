@@ -44,7 +44,7 @@ export const F4: AircraftConfig = {
       {
         n: '03',
         title: 'No gun, at first',
-        body: 'Missiles were expected to end the dogfight, so early Phantoms carried none. Combat disagreed, and a cannon was fitted back into later versions.',
+        body: 'Missiles were expected to end the dogfight, so early Phantoms carried none. Combat disagreed, and the F-4E was given an internal cannon.',
       },
     ],
   },

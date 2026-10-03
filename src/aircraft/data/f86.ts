@@ -28,7 +28,7 @@ export const F86: AircraftConfig = {
     category: 'SINGLE-ENGINE DAY FIGHTER',
     subtitle: [
       'Swept wings on an American airframe for the first time,',
-      'and the aircraft that made the dogfight supersonic-adjacent.',
+      'and the fighter that took the dogfight to the edge of the sound barrier.',
     ],
     annotations: [
       {

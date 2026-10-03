@@ -16,6 +16,7 @@ export type CompareLayout = 'side' | 'stack';
 interface Slot {
   config: AircraftConfig;
   voxelSize: number;
+  density: number;
   holder: Group;
   model: VoxelModel;
   shadow: Mesh;
@@ -115,10 +116,10 @@ export class CompareScene {
 
     const next: Slot[] = [a, b].map((config, i) => {
       const cur = this.slots[i];
-      // Same aircraft at the same block size stays exactly where it is.
-      if (cur && cur.config === config && cur.voxelSize === vs) return cur;
+      // Same aircraft at the same block size and density stays exactly where it is.
+      if (cur && cur.config === config && cur.voxelSize === vs && cur.density === density) return cur;
       if (cur) this.leave(cur);
-      return this.enter(config, data[i], vs);
+      return this.enter(config, data[i], vs, density);
     });
     this.slots = next;
     this.place(true);
@@ -138,7 +139,7 @@ export class CompareScene {
     this.place(false);
   }
 
-  private enter(config: AircraftConfig, data: Awaited<ReturnType<BuildCache['get']>>, voxelSize: number): Slot {
+  private enter(config: AircraftConfig, data: Awaited<ReturnType<BuildCache['get']>>, voxelSize: number, density: number): Slot {
     const model = new VoxelModel(`${config.id}:compare`, data);
     model.setAccent(config.palette.accent ?? '#ff6a2b');
     const centre = model.center;
@@ -161,7 +162,7 @@ export class CompareScene {
       gsap.to(model.uniforms.uMorph, { value: 0, duration: 1.15, delay: 0.28, ease: 'power3.out' });
     }
     gsap.to(shade, { opacity: 1, duration: 0.8, delay: 0.45 });
-    return { config, voxelSize, holder, model, shadow };
+    return { config, voxelSize, density, holder, model, shadow };
   }
 
   private leave(s: Slot): void {

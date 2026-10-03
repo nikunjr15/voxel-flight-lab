@@ -34,7 +34,7 @@ export const F104: AircraftConfig = {
       {
         n: '01',
         title: 'The wing is tiny',
-        body: 'Just over eighteen square metres, four per cent thick, with leading edges sharp enough to need protective covers on the ground. Wonderful above Mach 1, unforgiving below it.',
+        body: 'Just over eighteen square metres, about three and a half per cent thick, with leading edges sharp enough to need protective covers on the ground. Wonderful above Mach 1, unforgiving below it.',
       },
       {
         n: '02',

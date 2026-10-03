@@ -82,7 +82,9 @@ export class Title {
 
     this.name.textContent = c.name;
     this.block.classList.toggle('is-long', c.name.length > LONG_NAME);
-    this.sup.textContent = c.exhibitNo;
+    // Read as "Su-27 Flanker, exhibit 012"; seen as a bare superscript number.
+    this.sup.innerHTML = '<span class="sr-only">, exhibit </span>';
+    this.sup.append(c.exhibitNo);
     this.subA.textContent = c.copy.subtitle[0];
     this.subB.textContent = c.copy.subtitle[1];
 

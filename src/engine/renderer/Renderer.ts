@@ -1,5 +1,6 @@
 import {
   Color,
+  LinearSRGBColorSpace,
   Mesh,
   NeutralToneMapping,
   OrthographicCamera,
@@ -43,7 +44,8 @@ float hash(vec2 p) {
 void main() {
   vec3 col = texture2D(tDiffuse, vUv).rgb;
 
-  // Radial vignette, kept gentle so the backdrop still reads as paper-white.
+  // Radial vignette, kept gentle so the backdrop still reads as paper-white
+  // and the chrome's text in the corners keeps its contrast.
   vec2 c = vUv - 0.5;
   c.x *= uResolution.x / uResolution.y;
   float d = length(c);
@@ -71,7 +73,7 @@ export class Stage {
   private readonly quadScene = new Scene();
   private readonly quadCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private readonly quadMaterial: ShaderMaterial;
-  private readonly maxPixelRatio: number;
+  private maxPixelRatio: number;
   private width = 1;
   private height = 1;
 
@@ -87,9 +89,15 @@ export class Stage {
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.renderer.setClearColor(new Color(opts.background ?? '#e9eced'), 1);
+    // This pass writes the scene target's values to the screen as they are,
+    // with no sRGB encoding: the palettes and lights are tuned to that output.
+    // The backdrop is therefore given in output terms, so the canvas shows the
+    // same #e9eced as the page around it rather than its linear value, which
+    // reads as a mid grey and sets every scrim and panel apart from it.
+    const backdrop = new Color().setStyle(opts.background ?? '#e9eced', LinearSRGBColorSpace);
+    this.renderer.setClearColor(backdrop, 1);
 
-    this.scene.background = new Color(opts.background ?? '#e9eced');
+    this.scene.background = backdrop;
 
     this.camera = new PerspectiveCamera(34, 1, 0.1, 400);
     this.camera.position.set(14, 7, 18);
@@ -107,7 +115,7 @@ export class Stage {
         uResolution: { value: new Vector2(1, 1) },
         uTime: { value: 0 },
         uGrain: { value: 0.028 },
-        uVignette: { value: 0.3 },
+        uVignette: { value: 0.12 },
       },
     });
     this.quadScene.add(new Mesh(new PlaneGeometry(2, 2), this.quadMaterial));
@@ -115,6 +123,24 @@ export class Stage {
 
   setGrain(v: number): void {
     this.quadMaterial.uniforms.uGrain.value = v;
+  }
+
+  get grain(): number {
+    return this.quadMaterial.uniforms.uGrain.value;
+  }
+
+  /** MSAA on the scene target: 4 samples, or 0 to save fill on a slow GPU. */
+  setSamples(n: number): void {
+    if (this.target.samples === n) return;
+    this.target.samples = n;
+    // Three rebuilds the target's buffers on next use after a dispose.
+    this.target.dispose();
+  }
+
+  /** Lowers (or raises) the pixel-ratio cap and re-sizes to it. */
+  setMaxPixelRatio(v: number): void {
+    this.maxPixelRatio = v;
+    this.resize(this.width, this.height);
   }
 
   resize(rawWidth: number, rawHeight: number): void {

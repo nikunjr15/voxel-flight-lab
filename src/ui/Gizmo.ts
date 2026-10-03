@@ -25,6 +25,9 @@ export class Gizmo {
   private readonly q = new Quaternion();
   private readonly inv = new Quaternion();
   private readonly v = new Vector3();
+  /** Last values written, per element and attribute: the gizmo turns every idle frame, and re-sorting or re-writing unchanged SVG each frame kept the page's style dirty. */
+  private readonly written = new Map<Element, Record<string, string>>();
+  private lastOrder = '';
 
   constructor(mount: HTMLElement) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -82,20 +85,31 @@ export class Gizmo {
     }).sort((a, b) => a.z - b.z);
 
     for (const o of order) {
-      const x = C + o.x * LEN;
-      const y = C - o.y * LEN;
       const line = this.lines[o.i];
       const tip = this.tips[o.i];
-      line.setAttribute('x2', x.toFixed(2));
-      line.setAttribute('y2', y.toFixed(2));
       // Away from the viewer: thinner and faded.
       const away = o.z < -0.15;
-      line.setAttribute('opacity', away ? '0.4' : '1');
-      tip.setAttribute('x', (C + o.x * (LEN + 4.5)).toFixed(2));
-      tip.setAttribute('y', (C - o.y * (LEN + 4.5) + 2.2).toFixed(2));
-      tip.setAttribute('opacity', away ? '0.35' : '0.9');
-      // Re-append in depth order so near axes draw over far ones.
-      this.svg.insertBefore(line, this.tips[0]);
+      this.attr(line, 'x2', (C + o.x * LEN).toFixed(1));
+      this.attr(line, 'y2', (C - o.y * LEN).toFixed(1));
+      this.attr(line, 'opacity', away ? '0.4' : '1');
+      this.attr(tip, 'x', (C + o.x * (LEN + 4.5)).toFixed(1));
+      this.attr(tip, 'y', (C - o.y * (LEN + 4.5) + 2.2).toFixed(1));
+      this.attr(tip, 'opacity', away ? '0.35' : '0.9');
     }
+    // Re-append in depth order so near axes draw over far ones -- only when
+    // the order has actually changed.
+    const key = order.map((o) => o.i).join('');
+    if (key !== this.lastOrder) {
+      this.lastOrder = key;
+      for (const o of order) this.svg.insertBefore(this.lines[o.i], this.tips[0]);
+    }
+  }
+
+  private attr(el: Element, name: string, value: string): void {
+    let w = this.written.get(el);
+    if (!w) this.written.set(el, (w = {}));
+    if (w[name] === value) return;
+    w[name] = value;
+    el.setAttribute(name, value);
   }
 }

@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "deploy:preview": "npx vercel@latest deploy"
+    "deploy:preview": "npx vercel@latest deploy",
+    "og": "node scripts/og.mjs --force",
+    "prebuild": "node scripts/og.mjs"
   },
   "dependencies": {
     "gsap": "^3.13.0",

@@ -46,7 +46,7 @@ export const NGAD: AircraftConfig = {
       {
         n: '04',
         title: 'Everything here is an interpretation',
-        body: 'No official shape or figure has been released. Nothing in this model should be read as a disclosure, and no performance numbers are quoted because none are known.',
+        body: 'Official artwork has shown little beyond the nose, and no figures have been released. Nothing in this model should be read as a disclosure, and no performance numbers are quoted because none are known.',
       },
     ],
   },

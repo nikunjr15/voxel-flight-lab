@@ -40,7 +40,7 @@ export const ME262: AircraftConfig = {
       {
         n: '02',
         title: 'Engines in pods',
-        body: 'Hanging the engines under the wing kept them clear of the fuselage and made them easy to change, which mattered: the Jumo 004 ran for about ten hours before it needed replacing.',
+        body: 'Hanging the engines under the wing kept them clear of the fuselage and made them easy to change, which mattered: the Jumo 004 often ran only about ten hours before it needed replacing.',
       },
       {
         n: '03',

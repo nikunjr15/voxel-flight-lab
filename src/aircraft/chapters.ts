@@ -22,7 +22,7 @@ export const CHAPTERS: ChapterInfo[] = [
     title: 'Voxel Flight Lab',
     era: 'Introduction',
     summary:
-      'Jet fighters from the first operational jets of the 1940s to concepts that have not yet flown, one era to a chapter. Scroll to move through the eras; pick an aircraft from the strip at the top, or step with the arrow keys.',
+      'Fighter jets from the 1940s, when the first went into service, to concepts that have not yet flown, one era to a chapter. Scroll to move through the eras; pick an aircraft from the strip at the top, or step with the arrow keys.',
     innovation: {
       title: 'Built from a description',
       body: 'No models, images or textures are loaded. Each airframe is generated in code from a short list of its dimensions and shapes, so a new aircraft is a new description rather than new artwork.',
@@ -46,7 +46,7 @@ export const CHAPTERS: ChapterInfo[] = [
     title: 'Second generation',
     era: '1950s – 60s',
     summary:
-      'Speed became the measure of a fighter. Designers reached Mach 2 with tiny, thin wings or with large deltas, fitted the first air-intercept radars, and began to arm fighters with guided missiles as well as guns.',
+      'Speed became the measure of a fighter. Designers reached Mach 2 with tiny, thin wings or with large deltas, brought radar into single-seat fighters, and began to arm fighters with guided missiles as well as guns.',
     innovation: {
       title: 'Guided missiles',
       body: 'A missile that steers itself to the target changed the fight from a contest of gunnery to one of sensors, and every generation since has been shaped by it.',
@@ -106,7 +106,7 @@ export const CHAPTERS: ChapterInfo[] = [
     title: 'Next generation',
     era: 'Concepts',
     summary:
-      'None of these aircraft has flown. Sixth-generation programmes describe a crewed fighter at the centre of a team of uncrewed aircraft, with more of the work handed to software, and some drop the vertical tail altogether. Everything in this chapter is a concept.',
+      'None of these aircraft is in service, and none has flown in the form shown here. Sixth-generation programmes describe a crewed fighter at the centre of a team of uncrewed aircraft, with more of the work handed to software, and some drop the vertical tail altogether. Everything in this chapter is a concept.',
     innovation: {
       title: 'Crewed and uncrewed together',
       body: 'Loyal-wingman drones fly alongside the crewed aircraft, carrying sensors and weapons into places it would rather not go. The fighter becomes the team leader.',

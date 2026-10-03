@@ -182,7 +182,14 @@ export class ComparePanel {
     this.live.setAttribute('aria-live', 'polite');
     this.stats.appendChild(this.live);
 
-    root.append(this.head, this.stats);
+    // Each panel goes straight after the thing it stands in for, so the
+    // keyboard meets the pickers where the placard was, before the toolbar.
+    const main = root.querySelector('.chrome__main');
+    const notes = root.querySelector('.chrome__notes');
+    if (main) main.after(this.head);
+    else root.append(this.head);
+    if (notes) notes.after(this.stats);
+    else root.append(this.stats);
     document.addEventListener('pointerdown', (e) => {
       for (const p of this.pickers) if (!p.el.contains(e.target as Node)) p.close(false);
     });

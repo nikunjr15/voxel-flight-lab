@@ -30,6 +30,8 @@ export class Ribbon {
     this.track = document.createElement('div');
     this.track.className = 'ribbon__track';
     this.el.appendChild(this.track);
+    this.track.addEventListener('keydown', (e) => this.key(e));
+    new ResizeObserver(() => this.measure()).observe(this.track);
 
     for (const ch of CHAPTERS) {
       if (!hasJets(ch.n)) continue;
@@ -59,6 +61,7 @@ export class Ribbon {
     canvas.className = 'ribbon__icon';
     canvas.setAttribute('aria-hidden', 'true');
     b.appendChild(canvas);
+    b.tabIndex = -1;
     b.addEventListener('click', () => this.onSelect(c.id));
     this.buttons.set(c.id, b);
     return b;
@@ -105,14 +108,41 @@ export class Ribbon {
     canvas.classList.add('is-drawn');
   }
 
+  /**
+   * One tab stop for the whole strip -- twenty-seven buttons in the tab order
+   * would be a wall -- with the arrow keys moving between aircraft inside it
+   * and Enter or Space choosing one.
+   */
+  private key(e: KeyboardEvent): void {
+    const list = [...this.buttons.values()];
+    const i = list.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    let j = i;
+    if (e.key === 'ArrowRight') j = Math.min(list.length - 1, i + 1);
+    else if (e.key === 'ArrowLeft') j = Math.max(0, i - 1);
+    else if (e.key === 'Home') j = 0;
+    else if (e.key === 'End') j = list.length - 1;
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.rove(list[j]);
+    list[j].focus();
+  }
+
+  private rove(to: HTMLButtonElement): void {
+    for (const b of this.buttons.values()) b.tabIndex = b === to ? 0 : -1;
+  }
+
   /** Marks the aircraft on show and the chapter it belongs to. */
   setCurrent(id: string, chapter: number): void {
     if (this.current) this.buttons.get(this.current)?.removeAttribute('aria-current');
     this.current = id;
     const b = this.buttons.get(id);
     b?.setAttribute('aria-current', 'true');
+    // The tab stop follows the current aircraft, unless focus is already in the strip.
+    if (b && !this.track.contains(document.activeElement)) this.rove(b);
     this.setChapter(chapter);
-    if (b) this.reveal(b);
+    if (b) this.queueReveal(b);
   }
 
   /** Dims every chapter but the one on screen. */
@@ -120,12 +150,34 @@ export class Ribbon {
     for (const [n, g] of this.groups) g.classList.toggle('is-active', n === chapter);
   }
 
+  private revealFrame = 0;
+
+  private queueReveal(b: HTMLElement): void {
+    cancelAnimationFrame(this.revealFrame);
+    this.revealFrame = requestAnimationFrame(() => this.reveal(b));
+  }
+
+  /**
+   * The strip's geometry, read in a ResizeObserver callback -- after layout,
+   * where reading costs nothing -- and kept. Read on demand, mid aircraft
+   * change, it forced a full layout of a page that had just had its placard
+   * and notes rebuilt: 25-35 ms on a throttled phone.
+   */
+  private geometry: { client: number; scroll: number; at: Map<string, { left: number; width: number }> } | null = null;
+
+  private measure(): void {
+    const at = new Map<string, { left: number; width: number }>();
+    for (const [id, b] of this.buttons) at.set(id, { left: b.offsetLeft, width: b.offsetWidth });
+    this.geometry = { client: this.track.clientWidth, scroll: this.track.scrollWidth, at };
+  }
+
   /** Scrolls the strip, not the page, so the current icon sits near the middle. */
   private reveal(b: HTMLElement): void {
-    const track = this.track;
-    if (track.scrollWidth <= track.clientWidth + 1) return;
-    const left = b.offsetLeft - (track.clientWidth - b.offsetWidth) / 2;
+    const g = this.geometry;
+    const at = g?.at.get(b.dataset.id ?? '');
+    if (!g || !at || g.scroll <= g.client + 1) return;
+    const left = at.left - (g.client - at.width) / 2;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    track.scrollTo({ left, behavior: reduced ? 'auto' : 'smooth' });
+    this.track.scrollTo({ left, behavior: reduced ? 'auto' : 'smooth' });
   }
 }

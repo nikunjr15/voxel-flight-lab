@@ -38,7 +38,7 @@ export const MIRAGE3: AircraftConfig = {
       {
         n: '02',
         title: 'Half cones at the hips',
-        body: 'Each inlet carries a half-cone shock body that translates with speed. The splitter plate behind it keeps sluggish boundary-layer air off the fuselage out of the engine.',
+        body: 'Each inlet carries a half-cone shock body that translates with speed. The splitter plate behind it keeps the sluggish boundary-layer air off the fuselage and out of the engine.',
       },
       {
         n: '03',

@@ -66,28 +66,39 @@ export interface LightingHandles {
   key: DirectionalLight;
   fill: DirectionalLight;
   bounce: DirectionalLight;
+  rim: DirectionalLight;
   ambient: HemisphereLight;
   environment: Texture;
   dispose(): void;
 }
 
 export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHandles {
-  // Carries the ambient the skin no longer gets from the environment map.
-  const ambient = new HemisphereLight(0xe8eef5, 0x9aa0a6, 1.02);
+  // Form comes from the gap between key and fill. With the environment map
+  // gone from the skin, a strong ambient had filled that gap and left every
+  // face of the airframe the same grey; it now carries only enough to keep
+  // the shadow side from going black.
+  const ambient = new HemisphereLight(0xe8eef5, 0x8e959c, 0.6);
   scene.add(ambient);
 
-  const key = new DirectionalLight(0xfff0e0, 2.05);
+  const key = new DirectionalLight(0xfff0e0, 2.5);
   key.position.set(-9, 11, 7);
   scene.add(key);
 
-  const fill = new DirectionalLight(0xcfe0ff, 0.85);
+  const fill = new DirectionalLight(0xcfe0ff, 0.48);
   fill.position.set(8, 4, -9);
   scene.add(fill);
+
+  // A cool back light, high and behind the hero view: it catches the tops of
+  // the fins, the spine and the wing roots facing away from the key, which
+  // separates the airframe from the backdrop without any reflection.
+  const rim = new DirectionalLight(0xe4efff, 1.15);
+  rim.position.set(6, 9, -12);
+  scene.add(rim);
 
   // Soft bounce from below. Without it the belly, the intakes and an open
   // weapons bay fall into solid black and the modes that show them read as
   // empty silhouettes.
-  const bounce = new DirectionalLight(0xdfe7ee, 0.45);
+  const bounce = new DirectionalLight(0xdfe7ee, 0.34);
   bounce.position.set(-3, -8, 4);
   scene.add(bounce);
 
@@ -104,11 +115,12 @@ export function setupLighting(scene: Scene, renderer: WebGLRenderer): LightingHa
     key,
     fill,
     bounce,
+    rim,
     ambient,
     environment,
     dispose() {
       environment.dispose();
-      scene.remove(ambient, key, fill, bounce);
+      scene.remove(ambient, key, fill, bounce, rim);
     },
   };
 }

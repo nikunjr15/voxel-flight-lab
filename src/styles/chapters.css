@@ -12,6 +12,12 @@
   z-index: 0;
 }
 
+/* Keyboard focus scrolls things into view; keep them clear of the fixed top
+   strip and the toolbar. */
+html {
+  scroll-padding: 120px 0 170px;
+}
+
 .chapters {
   position: relative;
   z-index: 1;
@@ -54,7 +60,7 @@
 }
 
 .chapter__label {
-  margin: 0 0 clamp(12px, 1.4vw, 18px);
+  margin: 0 0 var(--space-label);
   font-family: var(--font-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--ls-wide);
@@ -63,9 +69,9 @@
 }
 
 .chapter__title {
-  margin: 0 0 clamp(16px, 1.8vw, 26px);
+  margin: 0 0 var(--space-head);
   font-weight: 300;
-  font-size: clamp(2.4rem, 5.2vw, 5.4rem);
+  font-size: var(--t-display);
   line-height: 0.95;
   letter-spacing: -0.035em;
   color: var(--ink);
@@ -73,7 +79,7 @@
 }
 
 .chapter--0 .chapter__title {
-  font-size: clamp(2.9rem, 7.4vw, 7.6rem);
+  font-size: var(--t-display-xl);
 }
 
 .chapter__summary {
@@ -143,11 +149,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px 6px;
+  padding: 7px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
-  color: var(--ink);
+  color: var(--ink-2);
   font-family: var(--font-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--ls-mono);
@@ -226,12 +232,10 @@
   display: flex;
   align-items: center;
   gap: 1px;
-  opacity: 0.5;
-  transition: opacity var(--dur) var(--ease-out-quart);
 }
 
-.ribbon__group.is-active {
-  opacity: 1;
+.ribbon__group:not(.is-active) .ribbon__icon.is-drawn {
+  opacity: 0.5;
 }
 
 .ribbon__ch {
@@ -249,7 +253,7 @@
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   opacity: 0.5;
@@ -258,7 +262,9 @@
     background var(--dur-fast) var(--ease-out-quart);
 }
 
-.ribbon__jet:hover {
+/* Dimmed with the button, the focus ring would be too faint to find. */
+.ribbon__jet:hover,
+.ribbon__jet:focus-visible {
   opacity: 1;
   background: rgba(22, 25, 28, 0.05);
 }
@@ -360,7 +366,9 @@
 
 /* Scrims under the fixed top strip and the toolbar, so chapter text scrolling
    past fades out beneath them instead of running through the controls. Fixed
-   and out of the grid flow, they take no space and no clicks. */
+   and out of the grid flow, they take no space and no clicks. They are flat
+   and the backdrop is vignetted, so they show only while there is text to
+   hide; over an exhibit they would read as bands across the top and bottom. */
 .chrome::before,
 .chrome::after {
   content: '';
@@ -369,6 +377,7 @@
   right: 0;
   z-index: -1;
   pointer-events: none;
+  opacity: var(--intro);
 }
 
 .chrome::before {
@@ -395,7 +404,7 @@
 
 .foot__egg {
   margin-left: 1.4em;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 /* One line on a phone, beside the block count: the egg hint takes the place
@@ -407,5 +416,51 @@
 
   .foot__egg {
     margin-left: 0;
+  }
+}
+
+/* ---------- closing footer and the fixed footer's legal line ---------- */
+
+.site-foot {
+  display: flex;
+  align-items: center;
+  min-height: 70vh;
+  padding: var(--pad) var(--pad) calc(var(--pad) + 132px);
+}
+
+.site-foot__legal,
+.site-foot__credit {
+  margin: 0 0 12px;
+  max-width: 32rem;
+  font-size: var(--t-body);
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.foot__legal {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Only where there is room for it beside the hints and the block count;
+   everywhere else the closing footer carries it. */
+@media (max-width: 1279px) {
+  .foot__legal {
+    display: none;
+  }
+}
+
+@media (max-width: 759px) {
+  .site-foot {
+    padding: var(--pad) var(--pad) calc(var(--pad) + 150px);
+  }
+
+  .site-foot__inner {
+    background: rgb(241 242 241 / calc(0.9 * var(--text, 1)));
   }
 }

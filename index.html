@@ -6,9 +6,32 @@
     <title>Voxel Flight Lab</title>
     <meta
       name="description"
-      content="An interactive museum of fighter jet evolution, with every airframe generated as voxels in code."
+      content="An interactive museum of fighter jets, from the first jets of the 1940s to concepts not yet flown, with every airframe built from voxels in code."
     />
     <meta name="theme-color" content="#e9eced" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="canonical" href="%SITE_URL%/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Voxel Flight Lab" />
+    <meta property="og:title" content="Voxel Flight Lab" />
+    <meta
+      property="og:description"
+      content="An interactive museum of fighter jets, from the 1940s to concepts not yet flown, every airframe built from voxels in code."
+    />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A voxel model of the VAJRA concept fighter beside the title Voxel Flight Lab." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Voxel Flight Lab" />
+    <meta
+      name="twitter:description"
+      content="An interactive museum of fighter jets, from the 1940s to concepts not yet flown, every airframe built from voxels in code."
+    />
+    <meta name="twitter:image" content="%SITE_URL%/og.png" />
+    <meta name="twitter:image:alt" content="A voxel model of the VAJRA concept fighter beside the title Voxel Flight Lab." />
     <script>
       // The loader is the way in at the introduction, once per tab. Repeat
       // visits, deep links and review views go straight to the page. Decided
@@ -23,10 +46,20 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts load without blocking the first paint; text shows in the
+         fallback faces for a moment and swaps. -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500&display=swap"
-      rel="stylesheet"
+      onload="this.onload = null; this.rel = 'stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500&display=swap"
+      />
+    </noscript>
   </head>
   <body>
     <div class="loader" role="dialog" aria-modal="true" aria-labelledby="loader-title">
@@ -44,7 +77,6 @@
 
     <a class="skip" href="#exhibit">Skip to exhibit text</a>
     <canvas id="stage" aria-hidden="true"></canvas>
-    <div data-mount="chapters"></div>
 
     <div class="chrome">
       <header class="chrome__top">
@@ -74,7 +106,7 @@
       <main class="chrome__main" id="exhibit" tabindex="-1">
         <p class="eyebrow" data-field="category"></p>
         <h1 class="display">
-          <span data-field="name">Voxel Flight Lab</span><sup class="display__sup" aria-label="exhibit number"></sup>
+          <span data-field="name">Voxel Flight Lab</span><sup class="display__sup"></sup>
         </h1>
         <p class="subtitle">
           <span data-field="subtitle-a"></span>
@@ -101,6 +133,7 @@
           <span class="foot__arrows"><span class="foot__key">← →</span> aircraft</span>
           <span class="foot__egg" data-field="egg">Psst — hold Space.</span>
         </p>
+        <p class="foot__legal">Design concept · not affiliated with any manufacturer or air force · approximate public figures</p>
         <p class="foot__right">
           <span class="foot__dot" aria-hidden="true"></span>
           <span data-field="blocks">0 blocks</span><span class="foot__config"> / flight config A</span>
@@ -109,6 +142,10 @@
 
       <p class="sr-only" aria-live="polite" data-field="live"></p>
     </div>
+
+    <!-- After the chrome in the document, so the keyboard reaches the header,
+         ribbon and toolbar before the chapter text. -->
+    <div data-mount="chapters"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

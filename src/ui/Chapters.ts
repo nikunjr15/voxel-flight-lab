@@ -33,6 +33,8 @@ export class Chapters {
   private active = -1;
   private resolveQueued = false;
   private reduced = false;
+  /** Last visibility written per element, so unchanged ones are left alone. */
+  private readonly shown = new WeakMap<HTMLElement, number>();
 
   constructor(
     mount: HTMLElement,
@@ -42,6 +44,7 @@ export class Chapters {
     this.el = mount;
     this.el.classList.add('chapters');
     for (const ch of CHAPTERS) this.el.appendChild(this.section(ch));
+    this.el.appendChild(this.siteFooter());
     this.watch(reduced);
   }
 
@@ -133,6 +136,24 @@ export class Chapters {
     return s;
   }
 
+  /**
+   * The page's closing words. It joins the chapter text in the sequencing, so
+   * the placard or the compare panels make way for it like any chapter.
+   */
+  private siteFooter(): HTMLElement {
+    const foot = document.createElement('footer');
+    foot.className = 'site-foot';
+    const inner = document.createElement('div');
+    inner.className = 'chapter__inner site-foot__inner';
+    inner.innerHTML = `
+      <p class="chapter__label">About this exhibit</p>
+      <p class="site-foot__legal">A design concept. Not affiliated with or endorsed by any manufacturer or air force. Specifications are approximate public figures; where a figure is not published, it is left out.</p>
+      <p class="site-foot__credit">Every airframe, icon and sound is generated in code. Built with Three.js and GSAP; set in Space Grotesk and JetBrains Mono.</p>`;
+    foot.appendChild(inner);
+    this.intros.push(inner);
+    return foot;
+  }
+
   private watch(reduced: boolean): void {
     this.reduced = reduced;
     for (const s of this.sections.values()) {
@@ -182,11 +203,17 @@ export class Chapters {
     requestAnimationFrame(() => {
       this.resolveQueued = false;
       const mid = window.innerHeight * 0.5;
+      // The chapter under the middle of the screen; below the last one, in
+      // the closing footer, the last chapter passed, so a jump to the end of
+      // the page lands where scrolling there would have.
       let found = -1;
+      let passed = -1;
       for (const [n, s] of this.sections) {
         const r = s.getBoundingClientRect();
         if (r.top <= mid && r.bottom > mid) found = n;
+        if (r.height > 0 && r.top <= mid) passed = n;
       }
+      if (found < 0) found = passed;
       if (found < 0 || found === this.active) return;
       this.active = found;
       this.events.onActive(found);
@@ -226,14 +253,24 @@ export class Chapters {
       for (let i = 0; i < children.length; i++) {
         // Lines arrive one after another, a few hundredths of a screen apart.
         const enter = clamp((0.86 - i * 0.025 - top) / 0.18);
-        const v = Math.min(enter, leave);
+        const v = Math.round(Math.min(enter, leave) * 100) / 100;
         const el = children[i] as HTMLElement;
-        el.style.opacity = v.toFixed(3);
-        el.style.visibility = v < 0.01 ? 'hidden' : '';
+        // Writing a style, even an unchanged one, dirties it for the next
+        // recalc; nine chapters of it on every scroll frame was most of the
+        // cost of the frame. Only what changed is written.
+        if (this.shown.get(el) === v) continue;
+        this.shown.set(el, v);
+        el.style.opacity = String(v);
+        // Opacity only: visibility would take the text out of the tab order and
+        // the accessibility tree, and screen readers read every chapter.
         el.style.transform = this.reduced || v >= 1 ? '' : `translateY(${((1 - v) * 24).toFixed(1)}px)`;
       }
       // The panel behind the text on a phone fades with it.
-      this.intros[k].style.setProperty('--text', Math.min(clamp((0.86 - top) / 0.18), leave).toFixed(3));
+      const panel = Math.round(Math.min(clamp((0.86 - top) / 0.18), leave) * 100) / 100;
+      if (this.shown.get(this.intros[k]) !== panel) {
+        this.shown.set(this.intros[k], panel);
+        this.intros[k].style.setProperty('--text', String(panel));
+      }
     });
 
     let run = 0;

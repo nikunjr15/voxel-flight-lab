@@ -8,7 +8,11 @@
   /* Ink */
   --ink: #16191c;
   --ink-2: #4b5258;
-  --ink-3: #868e95;
+  /* Text sits on the canvas, which the vignette darkens towards the corners
+     where the metadata and footer are: 6.1:1 on the background, 4.7:1 in the
+     darkest corner. The faint mono metadata passes AA everywhere. */
+  --ink-3: #52585d;
+  /* Lines and marks only, never text: 1.9:1. */
   --ink-4: #a9b0b6;
 
   /* Line */
@@ -17,7 +21,10 @@
 
   /* One restrained warm accent, used sparingly */
   --accent: #ff6a2b;
-  --accent-ink: #c74a14;
+  /* Accent as text and focus rings: 6.0:1 on the background, 4.7:1 in the
+     darkest corner. The bright accent is for marks and fills, and carries ink
+     text when it carries any. */
+  --accent-ink: #973a0f;
 
   /* Type */
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
@@ -27,6 +34,10 @@
   --t-mono: 0.6875rem;
   --t-body: 0.8125rem;
   --t-sub: 0.9375rem;
+  /* One display scale for every headline: placard, chapter, compare. The
+     introduction alone is larger. */
+  --t-display: clamp(2.6rem, 6.2vw, 6.4rem);
+  --t-display-xl: clamp(2.9rem, 7.4vw, 7.6rem);
 
   --ls-wide: 0.18em;
   --ls-mono: 0.13em;
@@ -35,6 +46,10 @@
   --pad: clamp(18px, 2.3vw, 34px);
   --gap: clamp(12px, 1.4vw, 22px);
   --radius: 14px;
+  --radius-sm: 6px;
+  /* Label to headline, and headline to body, everywhere. */
+  --space-label: clamp(10px, 1.2vw, 18px);
+  --space-head: clamp(14px, 1.6vw, 22px);
 
   /* Motion: everything eases, nothing snaps */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -66,8 +81,10 @@ html {
   overscroll-behavior-y: none;
 }
 
+/* The deep accent: the bright one managed 2.4:1 on the background, under the
+   3:1 a focus ring needs. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 3px;
   border-radius: 4px;
 }

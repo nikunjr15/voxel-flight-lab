@@ -91,7 +91,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  margin: 0 0 clamp(10px, 1.2vw, 18px);
+  margin: 0 0 var(--space-label);
   font-family: var(--font-mono);
   font-size: var(--t-micro);
   letter-spacing: var(--ls-wide);
@@ -103,14 +103,14 @@
   padding: 2px 6px 1px;
   border-radius: 3px;
   background: var(--accent);
-  color: #fff;
+  color: var(--ink);
   letter-spacing: var(--ls-mono);
 }
 
 .display {
   margin: 0;
   font-weight: 300;
-  font-size: clamp(2.6rem, 6.2vw, 6.4rem);
+  font-size: var(--t-display);
   line-height: 0.94;
   letter-spacing: -0.035em;
   color: var(--ink);
@@ -132,7 +132,7 @@
 }
 
 .subtitle {
-  margin: clamp(14px, 1.6vw, 22px) 0 0;
+  margin: var(--space-head) 0 0;
   font-size: var(--t-sub);
   font-weight: 300;
   line-height: 1.55;
@@ -598,7 +598,7 @@
   border-radius: 3px;
   background: rgba(233, 236, 237, 0.86);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--t-micro);
   letter-spacing: var(--ls-mono);
   text-transform: uppercase;
   white-space: nowrap;

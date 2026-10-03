@@ -28,6 +28,23 @@ export class BackdropClouds {
       opacity: 0.3,
       depthWrite: false,
     });
+    // Motes thin out towards the top and bottom of the screen, under the
+    // ribbon, metadata, toolbar and footer, so a drifting block never sits
+    // behind small text and takes its contrast below AA.
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('void main() {', 'varying float vScreenY;\nvoid main() {')
+        .replace(
+          '#include <project_vertex>',
+          '#include <project_vertex>\n  vScreenY = gl_Position.y / max(gl_Position.w, 1e-3);',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', 'varying float vScreenY;\nvoid main() {')
+        .replace(
+          '#include <opaque_fragment>',
+          '#include <opaque_fragment>\n  gl_FragColor.a *= (1.0 - smoothstep(0.66, 0.8, vScreenY)) * (1.0 - smoothstep(0.62, 0.78, -vScreenY));',
+        );
+    };
     this.mesh = new InstancedMesh(geometry, material, count);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = -2;

@@ -164,7 +164,18 @@ const PHONE_COMPARE: CompareLayout =
 const firstOf = (ch: number): AircraftConfig =>
   hasJets(ch) ? byChapter(ch)[0] : ch === 0 ? AIRCRAFT[0] : AIRCRAFT[AIRCRAFT.length - 1];
 
-type Transition = 'initial' | 'morph' | 'fade' | 'cut';
+type Transition = 'initial' | 'morph' | 'fade' | 'cut' | 'quality';
+
+/**
+ * Density rungs for adaptive quality. Desktop starts on the first, a phone on
+ * the third; a device that cannot hold the frame rate steps down one rung at
+ * a time. Each step also sheds one screen-space cost: grain, then MSAA, then
+ * pixel ratio above 1.
+ */
+const LADDER = [1, 0.8, 0.65, 0.5];
+/** Mean frame interval above this, held for SLOW_HOLD_MS, means step down. ~42 fps. */
+const SLOW_FRAME_MS = 24;
+const SLOW_HOLD_MS = 2000;
 
 /**
  * How far the first aircraft is blown apart at the top of the page. Fully
@@ -237,6 +248,14 @@ export class App {
   private flyTl: gsap.core.Timeline | null = null;
   private flying = false;
   private spaceTimer = 0;
+  /** `?density=` pins the density and switches adaptive quality off. */
+  private readonly pinnedDensity = Number(new URLSearchParams(location.search).get('density')) || 0;
+  private rung = (window.innerWidth || 1280) < 760 ? 2 : 0;
+  private qualitySteps = 0;
+  private avgFrame = 16.7;
+  private slowMs = 0;
+  /** No judging the frame rate until this time: loading and morphs are allowed to be heavy. */
+  private calmUntil = performance.now() + 4000;
   private spaceShift = false;
   private swallowClick = false;
   private prefetchTimer = 0;
@@ -740,11 +759,23 @@ export class App {
     if (n === 8) {
       this.enterCompare();
     } else {
-      if (this.compareOn) this.exitCompare(true);
+      // Leaving the hangar restyles the whole chrome; the next aircraft's
+      // placard and notes rebuild it again. Done in one frame that was a 64 ms
+      // stall on a throttled phone, so the second half waits a task.
+      const leaving = this.compareOn;
       const id = hasJets(n) ? (this.remembered.get(n) ?? firstOf(n).id) : firstOf(n).id;
-      if (id !== this.config.id) this.navigate(id, 'scroll');
-      else if (changed) this.resetView();
-      this.ribbon?.setCurrent(this.config.id, n);
+      // The stowed airframe comes back only if it is the one this chapter
+      // shows. Otherwise it is replaced at once, and bringing it back first
+      // would mean uploading a model -- possibly never drawn -- to throw away.
+      if (leaving) this.exitCompare(id === this.config.id);
+      const go = () => {
+        if (this.chapter !== n) return;
+        if (id !== this.config.id) this.navigate(id, 'scroll');
+        else if (changed && !leaving) this.resetView();
+        this.ribbon?.setCurrent(this.config.id, n);
+      };
+      if (leaving) window.setTimeout(go, 0);
+      else go();
     }
     this.applyCover();
     this.scheduleHistory();
@@ -807,7 +838,7 @@ export class App {
     if (!root) return;
     this.compare = new CompareScene(this.cache, {
       reduced: () => this.reduced,
-      density: () => densityForViewport(),
+      density: () => this.density(),
       onLeave: () => this.audio.whoosh(),
     });
     this.pivot.add(this.compare.group);
@@ -951,6 +982,50 @@ export class App {
     this.model?.setFade(1);
     this.store.set('thrust', false);
     this.idle = this.store.get('mode') === 'overview' && !this.store.get('orbit') && !this.reduced;
+  }
+
+  /** Build density: pinned by the address, or the current adaptive rung. */
+  private density(): number {
+    return this.pinnedDensity || LADDER[this.rung];
+  }
+
+  /**
+   * Adaptive quality. A frame interval averaging over SLOW_FRAME_MS for two
+   * seconds steps the exhibit down a rung, crossfaded so nothing pops. Never
+   * steps back up: a device that struggled once will struggle again, and
+   * see-sawing between rungs would be worse than either.
+   */
+  private watchFrameRate(now: number, ms: number): void {
+    if (this.pinnedDensity || this.rung >= LADDER.length - 1) return;
+    // A hidden tab, or a long pause, is not a slow frame.
+    if (document.hidden || ms > 250) return;
+    this.avgFrame += (ms - this.avgFrame) * 0.08;
+    if (now < this.calmUntil) {
+      this.slowMs = 0;
+      return;
+    }
+    this.slowMs = this.avgFrame > SLOW_FRAME_MS ? this.slowMs + ms : Math.max(0, this.slowMs - ms * 2);
+    if (this.slowMs < SLOW_HOLD_MS) return;
+    // A rebuild mid-mode or mid-flyby would cut across what the visitor is
+    // looking at; wait for the overview.
+    if (this.flying || this.store.get('radar') || (!this.compareOn && this.store.get('mode') !== 'overview')) return;
+    this.slowMs = 0;
+    this.calmUntil = now + 4000;
+    this.stepDown();
+  }
+
+  private stepDown(): void {
+    this.rung++;
+    this.qualitySteps++;
+    if (this.qualitySteps === 1) {
+      const g = { v: this.stage.grain };
+      gsap.to(g, { v: 0, duration: 1.2, onUpdate: () => this.stage.setGrain(g.v) });
+    }
+    if (this.qualitySteps === 2) this.stage.setSamples(0);
+    if (this.qualitySteps === 3) this.stage.setMaxPixelRatio(1);
+    if (import.meta.env.DEV) console.info(`[lab] quality: density ${LADDER[this.rung]}, step ${this.qualitySteps}`);
+    if (this.compareOn) void this.showPair();
+    else void this.present(this.config, 'quality', { keepChrome: true });
   }
 
   private compareLayout(): CompareLayout {
@@ -1173,7 +1248,7 @@ export class App {
     const vg = c.geometry.wing.vg;
     const sweep = this.store.get('sweep');
     return {
-      density: densityForViewport(),
+      density: this.density(),
       wingSweep: vg ? (c === this.config && Number.isFinite(sweep) ? sweep : vg.sweepMin) : undefined,
     };
   }
@@ -1274,7 +1349,8 @@ export class App {
     // A focused slider or field owns its keys: the arrows move the wing
     // sweep, not the exhibit.
     if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
-    if (e.key === 'f' || e.key === 'F') this.stats.toggle();
+    // The frame-time readout is a review tool; production has no debug keys.
+    if (__REVIEW__ && (e.key === 'f' || e.key === 'F')) this.stats.toggle();
     if (!this.chrome) return;
     if (e.code === 'Space') {
       // Space on a control is that control's: a button presses, a slider moves.
@@ -1347,6 +1423,25 @@ export class App {
     shadow.position.y = -size.y * 0.5 - 0.35;
 
     const prev = this.model && this.shadow ? { model: this.model, shadow: this.shadow } : null;
+    if (how === 'initial') {
+      // The first draw of the voxel materials compiles their shaders: over a
+      // second of blocked main thread on a slow phone. Compile them first,
+      // in parallel where the browser can, with the model in the scene but
+      // hidden. Every later airframe reuses the same programs.
+      model.group.visible = false;
+      this.pivot.add(model.group);
+      try {
+        await this.stage.renderer.compileAsync(this.stage.scene, this.stage.camera);
+      } catch {
+        // Compiling on first draw instead is slower, not broken.
+      }
+      model.group.visible = true;
+      if (token !== this.loadToken) {
+        model.group.removeFromParent();
+        model.dispose();
+        return;
+      }
+    }
     this.pivot.add(model.group, shadow);
     this.model = model;
     this.shadow = shadow;
@@ -1356,10 +1451,11 @@ export class App {
 
     if (prev) this.retire(prev, how);
     this.arrive(model, shadow, how);
-    if (how !== 'cut') {
+    if (how !== 'cut' && how !== 'quality') {
       this.modes?.reframe(how === 'initial' ? 0.9 : 1.2);
       this.prefetchAround(config);
     }
+    this.calmUntil = Math.max(this.calmUntil, performance.now() + 2500);
     this.stats.task(`present ${config.id}`, performance.now() - t0);
     if (how === 'initial') this.onProgress('build', 1);
     this.scheduleMorphBounds();
@@ -1392,11 +1488,11 @@ export class App {
       shade.opacity = 0;
       return;
     }
-    if (how === 'fade' || (how === 'initial' && this.reduced)) {
+    if (how === 'fade' || how === 'quality' || (how === 'initial' && this.reduced)) {
       const fade = { v: 0 };
       model.setFade(0);
       shade.opacity = 0;
-      gsap.to(fade, { v: 1, duration: 0.5, delay: 0.15, ease: 'power2.out', onUpdate: () => model.setFade(fade.v) });
+      gsap.to(fade, { v: 1, duration: how === 'quality' ? 0.9 : 0.5, delay: 0.15, ease: 'power2.out', onUpdate: () => model.setFade(fade.v) });
       gsap.to(shade, { opacity: 1, duration: 0.5, delay: 0.15 });
       return;
     }
@@ -1421,8 +1517,19 @@ export class App {
    */
   private retire(prev: Leaving, how: Transition): void {
     const { model, shadow } = prev;
+    // Stowed for the hangar -- hidden and already scattered or faded out --
+    // there is nothing left to animate, and showing it again would upload a
+    // model only to throw it away. (Hidden alone is not enough: cockpit mode
+    // hides the airframe under its section, and that one should scatter.)
+    const stowed = !model.group.visible && (model.morph >= 1.29 || model.uniforms.uFade.value <= 0.01);
     if (how === 'cut') {
       this.drop(prev);
+      return;
+    }
+    if (stowed) {
+      // Freeing it is not free either; do it once the transition is over.
+      this.leaving.push(prev);
+      window.setTimeout(() => this.drop(prev), 1500);
       return;
     }
     // Whatever mode left it in -- hidden under a cockpit section, exploded,
@@ -1432,16 +1539,16 @@ export class App {
     model.group.visible = true;
     gsap.killTweensOf(model.uniforms.uMorph);
     this.leaving.push(prev);
-    this.audio.whoosh();
+    if (how !== 'quality') this.audio.whoosh();
     // Two on the way out is plenty; a third means the visitor is racing.
     while (this.leaving.length > 2) this.drop(this.leaving[0]);
 
     gsap.to(shadow.material as MeshBasicMaterial, { opacity: 0, duration: 0.45 });
-    if (how === 'fade' || this.reduced) {
+    if (how === 'fade' || how === 'quality' || this.reduced) {
       const fade = { v: model.uniforms.uFade.value };
       gsap.to(fade, {
         v: 0,
-        duration: 0.4,
+        duration: how === 'quality' ? 0.9 : 0.4,
         ease: 'power2.in',
         onUpdate: () => model.setFade(fade.v),
         onComplete: () => this.drop(prev),
@@ -1480,8 +1587,10 @@ export class App {
   private readonly frame = (now: number): void => {
     if (!this.running) return;
     const w0 = performance.now();
-    const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+    const rawMs = now - this.lastTime;
+    const dt = Math.min(0.05, rawMs / 1000);
     this.lastTime = now;
+    if (this.chrome) this.watchFrameRate(now, rawMs);
     const t = now / 1000;
 
     this.clouds.update(t);
