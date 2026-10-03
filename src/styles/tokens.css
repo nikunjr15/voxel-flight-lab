@@ -53,7 +53,6 @@
 html,
 body {
   margin: 0;
-  height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-display);
@@ -61,8 +60,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-body {
-  overflow: hidden;
+/* The page scrolls: the chapters are its length. Review views have no
+   chapters, so they have nothing to scroll. */
+html {
+  overscroll-behavior-y: none;
 }
 
 :focus-visible {

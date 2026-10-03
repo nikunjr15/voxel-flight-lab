@@ -1,6 +1,7 @@
 import './styles/tokens.css';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/chapters.css';
 import './styles/review.css';
 import { App } from './app/App';
 

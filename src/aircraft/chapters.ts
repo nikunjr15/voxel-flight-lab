@@ -17,6 +17,18 @@ export interface ChapterInfo {
 
 export const CHAPTERS: ChapterInfo[] = [
   {
+    n: 0,
+    label: '00',
+    title: 'Voxel Flight Lab',
+    era: 'Introduction',
+    summary:
+      'Jet fighters from the first operational jets of the 1940s to concepts that have not yet flown, one era to a chapter. Scroll to move through the eras; pick an aircraft from the strip at the top, or step with the arrow keys.',
+    innovation: {
+      title: 'Built from a description',
+      body: 'No models, images or textures are loaded. Each airframe is generated in code from a short list of its dimensions and shapes, so a new aircraft is a new description rather than new artwork.',
+    },
+  },
+  {
     n: 1,
     label: '01',
     title: 'First generation',
@@ -115,3 +127,6 @@ export const CHAPTERS: ChapterInfo[] = [
 ];
 
 export const chapterInfo = (n: number): ChapterInfo | undefined => CHAPTERS.find((c) => c.n === n);
+
+/** Chapters that show aircraft of their own. The introduction and Compare do not. */
+export const hasJets = (n: number): boolean => n >= 1 && n <= 7;

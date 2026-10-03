@@ -8,13 +8,20 @@ export interface FrameSummary {
   /** Mean interval between frames, ms. Capped by the display's refresh. */
   frameMs: number;
   frameP95: number;
+  /** Longest frame in the window: the hitch, if there was one. */
+  frameMax: number;
   /** Mean main-thread time spent on one frame's work, ms. */
   cpuMs: number;
+  cpuMax: number;
   /** Mean GPU time for one frame's draw, ms; null if the timer query is unavailable. */
   gpuMs: number | null;
+  gpuMax: number | null;
+  /** Main-thread work outside the frame loop, such as swapping in a new model. */
+  tasks: { name: string; ms: number }[];
 }
 
-const WINDOW = 90;
+// About four seconds at 144 Hz: long enough to hold a whole morph.
+const WINDOW = 600;
 
 /**
  * Frame-time readout for verifying the performance budget. Toggled with F.
@@ -33,6 +40,8 @@ export class DevStats {
   private last = 0;
   private visible = false;
   private extra = '';
+  private readonly tasks: { name: string; ms: number }[] = [];
+  private lastTask: { name: string; ms: number } | null = null;
 
   private gl: WebGL2RenderingContext | null = null;
   private ext: TimerExt | null = null;
@@ -108,10 +117,13 @@ export class DevStats {
     if (!this.visible || this.frames.length < 10) return;
 
     const s = this.summary();
+    // The latest swap, kept until the next one rather than cleared with the window.
+    const last = this.lastTask;
     this.el.textContent =
-      `${s.frameMs.toFixed(1)} ms avg · ${s.frameP95.toFixed(1)} ms p95 · ${(1000 / s.frameMs).toFixed(0)} fps · ` +
+      `${s.frameMs.toFixed(1)} ms avg · ${s.frameP95.toFixed(1)} ms p95 · ${s.frameMax.toFixed(1)} ms worst · ${(1000 / s.frameMs).toFixed(0)} fps · ` +
       `cpu ${s.cpuMs.toFixed(2)} ms` +
       (s.gpuMs !== null ? ` · gpu ${s.gpuMs.toFixed(2)} ms` : '') +
+      (last ? ` · ${last.name} ${last.ms.toFixed(1)} ms` : '') +
       (this.extra ? ` · ${this.extra}` : '');
   }
 
@@ -120,13 +132,25 @@ export class DevStats {
     return {
       frameMs: mean(this.frames),
       frameP95: sorted[Math.floor(sorted.length * 0.95)] ?? 0,
+      frameMax: sorted[sorted.length - 1] ?? 0,
       cpuMs: mean(this.cpu),
+      cpuMax: Math.max(0, ...this.cpu),
       gpuMs: this.gpu.length ? mean(this.gpu) : null,
+      gpuMax: this.gpu.length ? Math.max(...this.gpu) : null,
+      tasks: [...this.tasks],
     };
+  }
+
+  /** Records a piece of main-thread work done outside the frame loop. */
+  task(name: string, ms: number): void {
+    this.tasks.push({ name, ms });
+    this.lastTask = { name, ms };
+    if (this.tasks.length > 20) this.tasks.shift();
   }
 
   /** Clears the sample windows, so a summary covers only what follows. */
   reset(): void {
+    this.tasks.length = 0;
     this.frames.length = 0;
     this.cpu.length = 0;
     this.gpu.length = 0;

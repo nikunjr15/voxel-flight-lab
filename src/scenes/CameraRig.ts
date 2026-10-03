@@ -56,7 +56,13 @@ export class CameraRig {
     this.controls.rotateSpeed = 0.75;
     this.controls.zoomSpeed = 0.7;
     this.controls.enabled = false;
+    // OrbitControls claims every touch on the canvas. Until free orbit is on,
+    // vertical swipes belong to the page, which is how the chapters scroll.
+    this.canvas = domElement;
+    this.canvas.style.touchAction = '';
   }
+
+  private readonly canvas: HTMLElement;
 
   get orbitEnabled(): boolean {
     return this.orbit;
@@ -65,6 +71,7 @@ export class CameraRig {
   setOrbit(enabled: boolean): void {
     this.orbit = enabled;
     this.controls.enabled = enabled;
+    this.canvas.style.touchAction = enabled ? 'none' : '';
     if (enabled) {
       this.controls.target.copy(this.target);
       this.controls.update();

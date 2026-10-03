@@ -19,6 +19,7 @@
   <body>
     <a class="skip" href="#exhibit">Skip to exhibit text</a>
     <canvas id="stage" aria-hidden="true"></canvas>
+    <div data-mount="chapters"></div>
 
     <div class="chrome">
       <header class="chrome__top">
@@ -33,6 +34,8 @@
           </span>
           <span class="brand__word">Voxel Flight Lab</span>
         </a>
+
+        <nav data-mount="ribbon"></nav>
 
         <div class="meta">
           <p class="meta__line">Airframe collection<span class="meta__chapter"> · <span data-field="chapter"></span></span></p>
@@ -69,8 +72,8 @@
 
       <footer class="chrome__foot">
         <p class="foot__left">
-          <span class="foot__key">Drag</span> rotate
-          <span class="foot__key" data-field="zoom-verb">Scroll</span> zoom
+          <span class="foot__key" data-field="scroll-verb">Scroll</span> chapters
+          <span class="foot__arrows"><span class="foot__key">← →</span> aircraft</span>
         </p>
         <p class="foot__right">
           <span class="foot__dot" aria-hidden="true"></span>

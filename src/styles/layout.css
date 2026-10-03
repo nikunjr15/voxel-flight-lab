@@ -14,7 +14,8 @@
   width: 100%;
   height: 100%;
   display: block;
-  touch-action: none;
+  /* Vertical swipes scroll the chapters; free orbit claims every touch. */
+  touch-action: pan-y;
 }
 
 .chrome {

@@ -4,7 +4,6 @@ import {
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
-  Matrix4,
   MeshStandardMaterial,
   Vector3,
 } from 'three';
@@ -47,7 +46,6 @@ export class VoxelModel {
     this.counts = data.partCounts;
     this.group.name = `voxel:${id}`;
 
-    const m = new Matrix4();
     for (const bucket of data.buckets) {
       const material = createVoxelMaterial({ kind: bucket.kind, uniforms: this.uniforms });
       // A geometry per bucket: the instanced attributes below live on the
@@ -60,13 +58,27 @@ export class VoxelModel {
       mesh.frustumCulled = false;
       mesh.renderOrder = bucket.kind === 'glass' ? 10 : 0;
 
+      // Pure translations, written straight into the instance buffer: a
+      // Matrix4 per voxel costs several milliseconds on a phone, mid-morph.
+      const mat = mesh.instanceMatrix.array as Float32Array;
       for (let i = 0; i < bucket.count; i++) {
-        m.makeTranslation(
-          bucket.offsets[i * 3],
-          bucket.offsets[i * 3 + 1],
-          bucket.offsets[i * 3 + 2],
-        );
-        mesh.setMatrixAt(i, m);
+        const o = i * 16;
+        mat[o] = 1;
+        mat[o + 1] = 0;
+        mat[o + 2] = 0;
+        mat[o + 3] = 0;
+        mat[o + 4] = 0;
+        mat[o + 5] = 1;
+        mat[o + 6] = 0;
+        mat[o + 7] = 0;
+        mat[o + 8] = 0;
+        mat[o + 9] = 0;
+        mat[o + 10] = 1;
+        mat[o + 11] = 0;
+        mat[o + 12] = bucket.offsets[i * 3];
+        mat[o + 13] = bucket.offsets[i * 3 + 1];
+        mat[o + 14] = bucket.offsets[i * 3 + 2];
+        mat[o + 15] = 1;
       }
       mesh.instanceMatrix.needsUpdate = true;
 
@@ -129,8 +141,22 @@ export class VoxelModel {
     return p === undefined ? 0 : this.counts[p];
   }
 
+  /**
+   * 0 assembled, 1 scattered into the dispersal cloud, 1.3 scattered and
+   * shrunk to nothing.
+   */
   setMorph(v: number): void {
     this.uniforms.uMorph.value = v;
+  }
+
+  get morph(): number {
+    return this.uniforms.uMorph.value;
+  }
+
+  /** Whole-model opacity, over the per-part values. Used for crossfades. */
+  setFade(v: number): void {
+    this.uniforms.uFade.value = v;
+    this.syncTransparency();
   }
 
   setExplode(v: number): void {
@@ -207,9 +233,10 @@ export class VoxelModel {
    * fully opaque, so a model with nothing faded costs no extra draw calls.
    */
   private syncTransparency(): void {
+    const fade = this.uniforms.uFade.value;
     let anyGhost = false;
     for (let p = 0; p < PART_COUNT; p++) {
-      const o = this.partState.getOpacity(p);
+      const o = this.partState.getOpacity(p) * fade;
       if (o > 0.02 && o < SOLID_OPACITY) {
         anyGhost = true;
         break;

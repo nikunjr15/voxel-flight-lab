@@ -1,4 +1,4 @@
-import { chapterInfo, COUNTRIES, type AircraftConfig } from '../aircraft';
+import { chapterInfo, COUNTRIES, type AircraftConfig, type ChapterInfo } from '../aircraft';
 
 const q = <T extends HTMLElement>(root: ParentNode, sel: string): T => {
   const el = root.querySelector<T>(sel);
@@ -28,6 +28,8 @@ export class Title {
   private readonly metaChapter: HTMLElement;
   private swapTimer = 0;
   private first = true;
+  /** The chapter on screen, which can differ from the aircraft's own. */
+  private chapter: ChapterInfo | null = null;
 
   constructor(root: HTMLElement) {
     this.block = q(root, '.chrome__main');
@@ -58,10 +60,15 @@ export class Title {
     }, 260);
   }
 
+  /** Names the chapter on screen in the top-right metadata. */
+  setChapter(info: ChapterInfo): void {
+    this.chapter = info;
+    this.metaChapter.textContent = info.n === 0 ? `${info.label} ${info.era}` : `${info.label} ${info.title}`;
+  }
+
   private fill(c: AircraftConfig): void {
     const country = COUNTRIES[c.spec.country];
     const concept = c.spec.status === 'concept';
-    const chapter = chapterInfo(c.chapter);
 
     this.eyebrow.textContent = c.copy.category;
     if (concept) {
@@ -89,7 +96,8 @@ export class Title {
 
     this.metaExhibit.textContent = c.exhibitNo;
     this.metaCountry.textContent = country.name;
-    this.metaChapter.textContent = chapter ? `${chapter.label} ${chapter.title}` : '';
+    const chapter = this.chapter ?? chapterInfo(c.chapter);
+    if (chapter) this.setChapter(chapter);
     document.title = `${c.name} — Voxel Flight Lab`;
   }
 }

@@ -1,5 +1,5 @@
 import type { Object3D, PerspectiveCamera } from 'three';
-import type { AircraftConfig } from '../aircraft';
+import type { AircraftConfig, ChapterInfo } from '../aircraft';
 import type { Store, ViewerState } from '../app/store';
 import { Annotations } from './Annotations';
 import { Gizmo } from './Gizmo';
@@ -57,10 +57,10 @@ export class Chrome {
       this.announce(label);
     });
 
-    // Touch screens pinch rather than scroll.
+    // Touch screens swipe rather than scroll.
     const coarse = window.matchMedia('(pointer: coarse)');
-    const hint = q(root, '[data-field="zoom-verb"]');
-    const setHint = () => (hint.textContent = coarse.matches ? 'Pinch' : 'Scroll');
+    const hint = q(root, '[data-field="scroll-verb"]');
+    const setHint = () => (hint.textContent = coarse.matches ? 'Swipe' : 'Scroll');
     coarse.addEventListener('change', setHint);
     setHint();
   }
@@ -71,6 +71,19 @@ export class Chrome {
     this.spec.show(config);
     this.panel.show(config);
     this.announce(`${config.name}, exhibit ${config.exhibitNo}`);
+  }
+
+  setChapter(info: ChapterInfo): void {
+    this.title.setChapter(info);
+  }
+
+  /**
+   * 0..1, how much chapter text covers the screen. The placard and notes fade
+   * by it, and stop taking clicks once the text is the thing being read.
+   */
+  setIntro(v: number): void {
+    this.root.style.setProperty('--intro', v.toFixed(3));
+    this.root.classList.toggle('is-intro', v > 0.5);
   }
 
   setBlocks(n: number): void {

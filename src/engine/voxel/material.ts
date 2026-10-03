@@ -132,6 +132,8 @@ export class PartState {
 export interface VoxelUniforms {
   uPartState: IUniform<Texture>;
   uMorph: IUniform<number>;
+  /** Whole-model opacity, multiplied into every part's: the reduced-motion crossfade. */
+  uFade: IUniform<number>;
   uExplode: IUniform<number>;
   uExplodeScale: IUniform<number>;
   uAOStrength: IUniform<number>;
@@ -143,6 +145,7 @@ export function createVoxelUniforms(partState: PartState): VoxelUniforms {
   return {
     uPartState: { value: partState.texture },
     uMorph: { value: 0 },
+    uFade: { value: 1 },
     uExplode: { value: 1 },
     uExplodeScale: { value: 1 },
     uAOStrength: { value: 0.33 },
@@ -159,6 +162,7 @@ attribute vec3 aScatter;
 attribute vec3 aColor;
 uniform sampler2D uPartState;
 uniform float uMorph;
+uniform float uFade;
 uniform float uExplode;
 uniform float uExplodeScale;
 varying float vAO;
@@ -200,7 +204,7 @@ const cullTest = (pass: Pass): string =>
       : 'vOpacity < 0.02';
 
 const vertBody = (pass: Pass) => /* glsl */ `
-  vOpacity = pstate.r;
+  vOpacity = pstate.r * uFade;
   vHighlight = pstate.g;
   vEmissive = pstate.a;
   vHeat = pvec.a;
@@ -214,6 +218,12 @@ const vertBody = (pass: Pass) => /* glsl */ `
   float m = smoothstep(0.0, 1.0, clamp(uMorph * 1.7 - aSeed * 0.7, 0.0, 1.0));
 
   transformed *= mix(1.0, 0.45, m);
+  // In flight, voxels pale toward the backdrop grey: otherwise the dark duct
+  // and engine linings, hidden inside the airframe, fly out as black grit.
+  vVoxColor = mix(aColor, vec3(0.78, 0.81, 0.84), m * 0.6);
+  // Past 1 the scattered voxels shrink away to nothing: the outgoing half of a
+  // morph ends empty instead of vanishing with a pop.
+  transformed *= 1.0 - smoothstep(1.0, 1.3, uMorph);
   // Only a part fading right out shrinks as it goes. A part held at ghost
   // opacity keeps full-size voxels, so it reads as a translucent skin rather
   // than a lattice of specks.
@@ -350,6 +360,7 @@ export function createVoxelMaterial({ kind, uniforms, ghost = false }: VoxelMate
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uPartState = uniforms.uPartState;
     shader.uniforms.uMorph = uniforms.uMorph;
+    shader.uniforms.uFade = uniforms.uFade;
     shader.uniforms.uExplode = uniforms.uExplode;
     shader.uniforms.uExplodeScale = uniforms.uExplodeScale;
     shader.uniforms.uAOStrength = uniforms.uAOStrength;

@@ -1,0 +1,395 @@
+/*
+ * The scrolling story and the evolution ribbon. The stage and the placard are
+ * fixed; chapters are ordinary page content that scrolls between them, so the
+ * page reads in order with or without the canvas.
+ *
+ * Stacking: canvas, then chapter text, then the fixed chrome. The chrome takes
+ * no clicks of its own except on its controls, so chapter buttons stay
+ * reachable underneath it.
+ */
+
+#stage {
+  z-index: 0;
+}
+
+.chapters {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.chrome {
+  z-index: 2;
+  --intro: 0;
+}
+
+/* While chapter text is on screen the placard, notes and mode controls make
+   way for it, and take no clicks. */
+.chrome__main,
+.chrome__notes,
+.chrome > .inspect,
+.chrome__panel {
+  opacity: calc(1 - var(--intro));
+}
+
+.chrome.is-intro .chrome__notes,
+.chrome.is-intro .inspect,
+.chrome.is-intro .chrome__panel,
+.chrome.is-intro .chrome__panel * {
+  pointer-events: none;
+}
+
+/* ---------- chapter text ---------- */
+
+.chapter__intro {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: calc(var(--pad) + 96px) var(--pad) calc(var(--pad) + 132px);
+}
+
+.chapter__inner {
+  max-width: min(35rem, 44vw);
+}
+
+.chapter__label {
+  margin: 0 0 clamp(12px, 1.4vw, 18px);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.chapter__title {
+  margin: 0 0 clamp(16px, 1.8vw, 26px);
+  font-weight: 300;
+  font-size: clamp(2.4rem, 5.2vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.chapter--0 .chapter__title {
+  font-size: clamp(2.9rem, 7.4vw, 7.6rem);
+}
+
+.chapter__summary {
+  margin: 0;
+  max-width: 33rem;
+  font-size: var(--t-sub);
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.chapter__innovation {
+  position: relative;
+  margin-top: clamp(20px, 2.4vw, 30px);
+  max-width: 30rem;
+  padding-left: 13px;
+  border-left: 1px solid var(--line-strong);
+}
+
+.chapter__innovation::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--accent);
+}
+
+.chapter__kicker {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.chapter__innovation h3 {
+  margin: 0 0 7px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.chapter__innovation p:last-child {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.chapter__jets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: clamp(20px, 2.4vw, 28px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter__jet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background var(--dur-fast) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart);
+}
+
+.chapter__jet:hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.chapter__jet-no {
+  color: var(--ink-3);
+}
+
+.chapter__cue {
+  margin: clamp(26px, 3vw, 40px) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  animation: cue 2.4s var(--ease-out-quart) infinite;
+}
+
+@keyframes cue {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+/* A screen of scrolling with only the aircraft and its placard. */
+.chapter__exhibit {
+  height: 100vh;
+  height: 100svh;
+}
+
+/* ---------- evolution ribbon ---------- */
+
+.ribbon {
+  display: flex;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.ribbon__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  padding: 2px 10px 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+
+.ribbon__track::-webkit-scrollbar {
+  display: none;
+}
+
+.ribbon__group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0.5;
+  transition: opacity var(--dur) var(--ease-out-quart);
+}
+
+.ribbon__group.is-active {
+  opacity: 1;
+}
+
+.ribbon__ch {
+  margin-right: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  color: var(--ink-3);
+}
+
+.ribbon__jet {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.5;
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    background var(--dur-fast) var(--ease-out-quart);
+}
+
+.ribbon__jet:hover {
+  opacity: 1;
+  background: rgba(22, 25, 28, 0.05);
+}
+
+.ribbon__jet[aria-current='true'] {
+  opacity: 1;
+}
+
+.ribbon__jet[aria-current='true']::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -5px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.ribbon__icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out-quart);
+}
+
+.ribbon__icon.is-drawn {
+  opacity: 1;
+}
+
+/* ---------- footer hint ---------- */
+
+.foot__arrows {
+  margin-left: 0.9em;
+}
+
+@media (pointer: coarse) {
+  .foot__arrows {
+    display: none;
+  }
+}
+
+/* ---------- phones: chapters stack, the ribbon is a strip of its own ---------- */
+
+@media (max-width: 759px) {
+  .chrome__top {
+    flex-wrap: wrap;
+  }
+
+  .ribbon {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    margin: 12px calc(-1 * max(var(--pad), env(safe-area-inset-right))) 0
+      calc(-1 * max(var(--pad), env(safe-area-inset-left)));
+  }
+
+  .ribbon__track {
+    padding: 2px var(--pad) 8px;
+    scroll-snap-type: x proximity;
+  }
+
+  .ribbon__jet {
+    scroll-snap-align: center;
+  }
+
+  .chapter__intro {
+    align-items: flex-start;
+    padding: calc(var(--pad) + 118px) var(--pad) calc(var(--pad) + 150px);
+  }
+
+  /* Over a live canvas a backdrop blur costs every frame of the scroll; a
+     near-opaque ground reads as well and costs nothing. */
+  .chapter__inner {
+    max-width: none;
+    padding: 20px 18px 22px;
+    border-radius: var(--radius);
+    background: rgba(241, 242, 241, 0.9);
+  }
+
+  .chapter--0 .chapter__inner {
+    background: rgba(241, 242, 241, 0.72);
+  }
+
+  .foot__arrows {
+    display: none;
+  }
+}
+
+/* The ribbon takes the space between them; brand and metadata keep theirs. */
+.chrome__top > .brand,
+.chrome__top > .meta {
+  flex: none;
+}
+
+.brand__word {
+  white-space: nowrap;
+}
+
+/* Scrims under the fixed top strip and the toolbar, so chapter text scrolling
+   past fades out beneath them instead of running through the controls. Fixed
+   and out of the grid flow, they take no space and no clicks. */
+.chrome::before,
+.chrome::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.chrome::before {
+  top: 0;
+  height: calc(max(var(--pad), env(safe-area-inset-top)) + 58px);
+  background: linear-gradient(to bottom, var(--bg) 62%, rgba(233, 236, 237, 0));
+}
+
+.chrome::after {
+  bottom: 0;
+  height: calc(max(calc(var(--pad) * 0.7), env(safe-area-inset-bottom)) + 104px);
+  background: linear-gradient(to top, var(--bg) 58%, rgba(233, 236, 237, 0));
+}
+
+@media (max-width: 759px) {
+  .chrome::before {
+    height: calc(max(var(--pad), env(safe-area-inset-top)) + 106px);
+  }
+
+  .chrome::after {
+    height: calc(max(calc(var(--pad) * 0.7), env(safe-area-inset-bottom)) + 96px);
+  }
+}

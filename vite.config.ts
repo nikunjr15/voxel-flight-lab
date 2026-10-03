@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           three: ['three'],
-          gsap: ['gsap'],
+          gsap: ['gsap', 'gsap/ScrollTrigger'],
         },
       },
     },

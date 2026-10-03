@@ -1,4 +1,5 @@
-import { Group, Mesh, Vector3 } from 'three';
+import { Group, Mesh, MeshBasicMaterial, Vector3 } from 'three';
+import gsap from 'gsap';
 import { Stage } from '../engine/renderer/Renderer';
 import { setupLighting, LightingHandles } from '../engine/renderer/Lighting';
 import { createContactShadow } from '../engine/renderer/ContactShadow';
@@ -9,7 +10,7 @@ import { Rig } from '../scenes/rig/Rig';
 import { Gallery, GALLERY_SETS } from '../scenes/rig/Gallery';
 import { PARTS } from '../engine/voxel/parts';
 import { CameraRig, CameraPreset } from '../scenes/CameraRig';
-import { AIRCRAFT, byId } from '../aircraft';
+import { AIRCRAFT, byChapter, byId, chapterInfo, hasJets } from '../aircraft';
 import type { AircraftConfig } from '../aircraft/types';
 import { DevStats } from '../ui/devstats';
 import { Chrome } from '../ui/Chrome';
@@ -18,7 +19,10 @@ import { createViewerStore } from './store';
 import { ModeManager } from '../scenes/ModeManager';
 import { RadarView } from '../scenes/RadarView';
 import { radarCards } from '../ui/modeCopy';
-import type { AssembleResult } from '../engine/build/assemble';
+import type { AssembleOptions, AssembleResult } from '../engine/build/assemble';
+import { BuildCache } from './BuildCache';
+import { Chapters } from '../ui/Chapters';
+import { Ribbon } from '../ui/Ribbon';
 
 /** `?rig=1` swaps the exhibit for the primitive test bench. Review builds only. */
 const RIG_MODE = __REVIEW__ && new URLSearchParams(location.search).get('rig') === '1';
@@ -101,6 +105,51 @@ const HERO_DIR = new Vector3(0.52, 0.3, 1).normalize();
 const HERO_FOV = 31;
 const PLAN_FOV = 30;
 
+/** Where the visitor is: a chapter, and in chapters with aircraft, which one. */
+interface Route {
+  ch: number;
+  id: string | null;
+}
+
+/**
+ * Reads `#ch3/mig-23`. An aircraft in the link decides the chapter, so a
+ * link that names the wrong chapter still opens the right exhibit; the
+ * introduction and Compare carry no aircraft.
+ */
+function parseRoute(hash: string): Route | null {
+  const m = /^#ch(\d)(?:\/([a-z0-9-]+))?$/i.exec(hash);
+  if (!m) return null;
+  const ch = Number(m[1]);
+  if (!chapterInfo(ch)) return null;
+  const c = m[2] ? byId(m[2].toLowerCase()) : undefined;
+  if (c && hasJets(ch)) return { ch: c.chapter, id: c.id };
+  return { ch, id: null };
+}
+
+const routeHash = (r: Route): string => `#ch${r.ch}${r.id && hasJets(r.ch) ? `/${r.id}` : ''}`;
+
+/**
+ * The aircraft a chapter opens on when nothing else has been picked there.
+ * The introduction opens on the first aircraft, Compare on the last.
+ */
+const firstOf = (ch: number): AircraftConfig =>
+  hasJets(ch) ? byChapter(ch)[0] : ch === 0 ? AIRCRAFT[0] : AIRCRAFT[AIRCRAFT.length - 1];
+
+type Transition = 'initial' | 'morph' | 'fade' | 'cut';
+
+/**
+ * How far the first aircraft is blown apart at the top of the page. Fully
+ * scattered, the cloud fills the screen and buries the introduction; part
+ * way, it reads as an airframe coming apart.
+ */
+const COVER_SCATTER = 0.3;
+
+/** Outgoing airframe during a morph, until its voxels have scattered away. */
+interface Leaving {
+  model: VoxelModel;
+  shadow: Mesh;
+}
+
 const prefersReducedMotion = (): boolean =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -133,6 +182,20 @@ export class App {
   private sweepQuiet = false;
 
   private model: VoxelModel | null = null;
+  private readonly cache = new BuildCache();
+  private readonly leaving: Leaving[] = [];
+  private chapters: Chapters | null = null;
+  private ribbon: Ribbon | null = null;
+  /** Chapter under the middle of the screen; -1 before the first scroll check. */
+  private chapter = -1;
+  /** The aircraft last shown in each chapter, so scrolling back returns to it. */
+  private readonly remembered = new Map<number, string>();
+  /** 0..1, how much chapter text covers the screen. */
+  private introCover = 0;
+  /** Scroll progress through the introduction: 0 at the top of the page. */
+  private coverProgress = 1;
+  private historyTimer = 0;
+  private prefetchTimer = 0;
   private bench: Rig | null = null;
   private gallery: Gallery | null = null;
   private shadow: Mesh | null = null;
@@ -161,8 +224,11 @@ export class App {
       reducedMotion: this.reduced,
     });
 
-    // `?id=` opens a particular exhibit; chapters will replace this in phase 5.
-    this.config = byId(new URLSearchParams(location.search).get('id') ?? '') ?? AIRCRAFT[0];
+    // `#ch3/mig-23` opens a chapter and an aircraft. `?id=` is the older
+    // form, kept so review links still work: it opens that aircraft's chapter.
+    const legacy = byId(new URLSearchParams(location.search).get('id') ?? '');
+    const route: Route = parseRoute(location.hash) ?? (legacy ? { ch: legacy.chapter, id: legacy.id } : { ch: 0, id: null });
+    this.config = (route.id && byId(route.id)) || firstOf(route.ch);
     this.resize();
     this.rig.set(this.heroPreset());
     if (!GALLERY_SET && !RIG_MODE) {
@@ -184,12 +250,63 @@ export class App {
       );
       this.radar = new RadarView();
       this.stage.scene.add(this.radar.group);
+      this.pivot.add(this.modes.fx);
+      this.setupChapters(route);
     }
     this.bindEvents();
 
     if (GALLERY_SET) void this.loadGallery(GALLERY_SET);
     else if (RIG_MODE) void this.loadRig();
-    else void this.load(this.config).then(() => this.modes?.reframe(0.9));
+    else void this.present(this.config, 'initial').then(() => this.buildSilhouettes());
+  }
+
+  /**
+   * The scrolling story and the ribbon. The page opens at the chapter the
+   * address names, with the text already scrolled away when it names an
+   * aircraft too.
+   */
+  private setupChapters(route: Route): void {
+    const ribbonMount = document.querySelector<HTMLElement>('[data-mount="ribbon"]');
+    if (ribbonMount) this.ribbon = new Ribbon(ribbonMount, (id) => this.navigate(id, 'pick'));
+    const mount = document.querySelector<HTMLElement>('[data-mount="chapters"]');
+    if (!mount) return;
+    this.chapters = new Chapters(
+      mount,
+      {
+        onActive: (n) => this.onChapter(n),
+        onIntro: (v) => {
+          this.introCover = v;
+          this.chrome?.setIntro(v);
+        },
+        onCover: (p) => {
+          this.coverProgress = p;
+          this.applyCover();
+        },
+        onSelect: (id) => this.navigate(id, 'pick'),
+      },
+      this.reduced,
+    );
+    for (let ch = 1; ch <= 7; ch++) this.remembered.set(ch, firstOf(ch).id);
+    if (route.id) this.remembered.set(route.ch, route.id);
+    this.ribbon?.setCurrent(this.config.id, this.config.chapter);
+
+    // Scroll positions are this page's to restore, from the address.
+    history.scrollRestoration = 'manual';
+    history.replaceState(null, '', this.urlFor(route));
+    const land = () => {
+      if (route.ch !== 0 || route.id) this.chapters?.jumpTo(route.ch, route.id ? 'exhibit' : 'intro');
+      else window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    };
+    land();
+    const landedAt = window.scrollY;
+    // Web fonts can change the height of the chapter text; land again once
+    // they are in, so a deep link still opens on its exhibit -- unless the
+    // visitor has already scrolled away from where it put them.
+    void document.fonts?.ready.then(() => {
+      this.chapters?.refresh();
+      if (Math.abs(window.scrollY - landedAt) < 2) land();
+    });
+    window.addEventListener('popstate', this.onPopState);
   }
 
   /**
@@ -450,7 +567,7 @@ export class App {
         return;
       }
       this.sweepBusy = true;
-      void this.load(this.config, { keepChrome: true }).finally(() => (this.sweepBusy = false));
+      void this.present(this.config, 'cut', { keepChrome: true }).finally(() => (this.sweepBusy = false));
     }, 40);
   }
 
@@ -495,15 +612,157 @@ export class App {
     this.rig.apply({ position: [tx + dir.x, dir.y, dir.z], target: [tx, 0, 0], fov }, 1.2);
   }
 
-  /** Steps to the previous or next exhibit. Chapters and morphs come in phase 5. */
+  /**
+   * Steps to the previous or next aircraft in exhibit order, across chapter
+   * boundaries. From the introduction the first step is the first aircraft;
+   * from Compare, back is the last.
+   */
   private step(delta: number): void {
-    const i = AIRCRAFT.indexOf(this.config);
-    const next = AIRCRAFT[(i + delta + AIRCRAFT.length) % AIRCRAFT.length];
+    if (this.chapter === 0 && delta > 0) return this.navigate(AIRCRAFT[0].id, 'key');
+    if (this.chapter === 8 && delta < 0) return this.navigate(AIRCRAFT[AIRCRAFT.length - 1].id, 'key');
+    const next = AIRCRAFT[AIRCRAFT.indexOf(this.config) + delta];
+    if (next) this.navigate(next.id, 'key');
+  }
+
+  /**
+   * Shows an aircraft. A pick or a key press in another chapter moves the
+   * page there; a scroll has already moved it. Either way the toolbar goes
+   * back to the overview, and the airframe morphs into the new one.
+   */
+  private navigate(id: string, source: 'pick' | 'key' | 'scroll' | 'history'): void {
+    const c = byId(id);
+    if (!c) return;
+    this.remembered.set(c.chapter, c.id);
+    if (source === 'pick' || source === 'key') {
+      // Land on the exhibit run, so the placard is not under chapter text.
+      if (this.chapter !== c.chapter || this.introCover > 0.5) {
+        this.chapter = c.chapter;
+        this.chapters?.jumpTo(c.chapter, 'exhibit');
+      }
+    }
+    if (c !== this.config) {
+      this.resetView();
+      void this.present(c, this.reduced ? 'fade' : 'morph');
+    }
+    this.ribbon?.setCurrent(c.id, this.chapter >= 0 ? this.chapter : c.chapter);
+    if (source !== 'history') this.scheduleHistory();
+  }
+
+  /** The chapter under the middle of the screen changed, by scrolling or a jump. */
+  private onChapter(n: number): void {
+    const changed = n !== this.chapter;
+    this.chapter = n;
+    this.ribbon?.setChapter(n);
+    const info = chapterInfo(n);
+    if (info) this.chrome?.setChapter(info);
+    if (n === 8) {
+      // Compare has no aircraft of its own: whatever is on show stays.
+      if (changed) this.resetView();
+    } else {
+      const id = hasJets(n) ? (this.remembered.get(n) ?? firstOf(n).id) : firstOf(n).id;
+      if (id !== this.config.id) this.navigate(id, 'scroll');
+      else if (changed) this.resetView();
+      this.ribbon?.setCurrent(this.config.id, n);
+    }
+    this.applyCover();
+    this.scheduleHistory();
+  }
+
+  /** Back to the overview: changing aircraft or chapter starts from the top. */
+  private resetView(): void {
+    this.store.set('orbit', false);
+    this.store.set('radar', false);
+    this.store.set('thrust', false);
+    if (this.store.get('mode') !== 'overview') this.store.set('mode', 'overview');
+    else this.modes?.reframe(1.2);
+  }
+
+  private currentRoute(): Route {
+    return { ch: Math.max(0, this.chapter), id: hasJets(this.chapter) ? this.config.id : null };
+  }
+
+  /** The address for a route, dropping the older ?id= form. */
+  private urlFor(route: Route): string {
     const url = new URL(location.href);
-    url.searchParams.set('id', next.id);
-    history.replaceState(null, '', url);
-    if (this.store.get('radar')) this.store.set('radar', false);
-    void this.load(next).then(() => this.modes?.reframe(1.2));
+    url.searchParams.delete('id');
+    url.hash = route.ch === 0 && !route.id ? '' : routeHash(route);
+    return url.pathname + url.search + url.hash;
+  }
+
+  /**
+   * One history entry per place the visitor settles, not per chapter scrolled
+   * past: the address updates a moment after things stop changing.
+   */
+  private scheduleHistory(): void {
+    window.clearTimeout(this.historyTimer);
+    this.historyTimer = window.setTimeout(() => {
+      if (this.chapter < 0) return;
+      const url = this.urlFor(this.currentRoute());
+      if (url === location.pathname + location.search + location.hash) return;
+      history.pushState(null, '', url);
+    }, 450);
+  }
+
+  /** Back and forward: go where the address says, without adding an entry. */
+  private readonly onPopState = (): void => {
+    window.clearTimeout(this.historyTimer);
+    const route = parseRoute(location.hash) ?? { ch: 0, id: null };
+    const id = route.id ?? (hasJets(route.ch) ? (this.remembered.get(route.ch) ?? firstOf(route.ch).id) : null);
+    this.chapter = route.ch;
+    if (route.ch === 0 && !route.id) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    else this.chapters?.jumpTo(route.ch, route.id ? 'exhibit' : 'intro');
+    if (id) this.navigate(id, 'history');
+    else if (route.ch === 0) this.navigate(firstOf(0).id, 'history');
+  };
+
+  /**
+   * The introduction opens on the first aircraft as a cloud of voxels, which
+   * gathers into the airframe as the introduction scrolls away.
+   */
+  private applyCover(): void {
+    const model = this.model;
+    if (!model || !this.chapters || this.reduced) return;
+    if (model.info.id !== firstOf(0).id || gsap.isTweening(model.uniforms.uMorph)) return;
+    model.setMorph(this.chapter <= 0 ? COVER_SCATTER * Math.max(0, 1 - this.coverProgress) : 0);
+  }
+
+  private buildOpts(c: AircraftConfig): AssembleOptions {
+    const vg = c.geometry.wing.vg;
+    const sweep = this.store.get('sweep');
+    return {
+      density: densityForViewport(),
+      wingSweep: vg ? (c === this.config && Number.isFinite(sweep) ? sweep : vg.sweepMin) : undefined,
+    };
+  }
+
+  /**
+   * After a change settles, build what the visitor is most likely to ask for
+   * next: either neighbour in exhibit order, and the aircraft each
+   * neighbouring chapter would open on.
+   */
+  private prefetchAround(c: AircraftConfig): void {
+    window.clearTimeout(this.prefetchTimer);
+    this.prefetchTimer = window.setTimeout(() => {
+      const i = AIRCRAFT.indexOf(c);
+      const list: (AircraftConfig | undefined)[] = [AIRCRAFT[i + 1], AIRCRAFT[i - 1]];
+      for (const n of [c.chapter + 1, c.chapter - 1]) {
+        if (hasJets(n)) list.push(byId(this.remembered.get(n) ?? '') ?? firstOf(n));
+      }
+      const unique = [...new Set(list.filter((x): x is AircraftConfig => !!x && x !== c))];
+      void this.cache.prefetch(unique, (x) => this.buildOpts(x));
+    }, 1300);
+  }
+
+  /** Plan-view masks for the ribbon, one at a time behind the real builds. */
+  private async buildSilhouettes(): Promise<void> {
+    if (!this.ribbon) return;
+    for (const c of AIRCRAFT) {
+      try {
+        this.ribbon.setMask(await buildClient.silhouette(c));
+      } catch {
+        // An icon that fails to build stays blank; the name is still there.
+      }
+    }
   }
 
   private reframeTimer = 0;
@@ -545,6 +804,9 @@ export class App {
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // A focused slider or field owns its keys: the arrows move the wing
+    // sweep, not the exhibit.
+    if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
     if (e.key === 'f' || e.key === 'F') this.stats.toggle();
     if (!this.chrome) return;
     if (e.key === 'Escape') {
@@ -564,11 +826,18 @@ export class App {
   };
 
   /**
-   * Builds a config into instance buffers and swaps it onto the turntable.
-   * The build runs in a worker, so a later call can land first; the token
-   * check throws away anything the user has already navigated past.
+   * Puts an aircraft on the turntable. The build comes from the cache --
+   * usually prefetched, so nothing waits on the worker -- and arrives by
+   * `how`:
+   *   morph   the old airframe scatters into its voxel cloud as the new one
+   *           gathers out of its own
+   *   fade    a plain crossfade, for reduced motion
+   *   initial the first aircraft on the page assembling out of its cloud
+   *   cut     an in-place rebuild (the wing-sweep slider), no transition
+   * The worker can answer out of order; the token drops anything the visitor
+   * has already moved past.
    */
-  async load(config: AircraftConfig, opts: { keepChrome?: boolean } = {}): Promise<void> {
+  async present(config: AircraftConfig, how: Transition, opts: { keepChrome?: boolean } = {}): Promise<void> {
     const token = ++this.loadToken;
     const changed = config !== this.config || !this.model;
     this.config = config;
@@ -580,40 +849,42 @@ export class App {
     }
     if (!opts.keepChrome) this.chrome?.show(config);
 
-    const sweep = this.store.get('sweep');
-    const data: AssembleResult = await buildClient.build(config, {
-      density: densityForViewport(),
-      wingSweep: vg && Number.isFinite(sweep) ? sweep : undefined,
-    });
+    const data: AssembleResult = await this.cache.get(config, this.buildOpts(config));
+    // A prefetched build resolves at once, which would run everything below
+    // inside the click or key handler that asked for it. Yield first, so the
+    // placard update and the model swap are two short tasks, not one long one.
+    await new Promise((r) => setTimeout(r, 0));
     if (token !== this.loadToken) return;
-
-    this.model?.dispose();
-    this.pivot.clear();
+    const t0 = performance.now();
 
     const model = new VoxelModel(config.id, data);
     model.setAccent(config.palette.accent ?? '#ff6a2b');
-
     // Re-centre so the turntable spins about the airframe, not the grid origin.
     const centre = model.center;
     model.group.position.set(-centre.x, -centre.y, -centre.z);
-    this.pivot.add(model.group);
-
     const size = model.size;
-    this.shadow = createContactShadow(Math.max(size.x, size.z) * 0.62, 0.34);
-    this.shadow.position.y = -size.y * 0.5 - 0.35;
-    this.pivot.add(this.shadow);
+    const shadow = createContactShadow(Math.max(size.x, size.z) * 0.62, 0.34);
+    shadow.position.y = -size.y * 0.5 - 0.35;
 
+    const prev = this.model && this.shadow ? { model: this.model, shadow: this.shadow } : null;
+    this.pivot.add(model.group, shadow);
     this.model = model;
+    this.shadow = shadow;
     this.voxelsPerMetre = 1 / data.voxelSize;
-    if (this.modes) {
-      this.pivot.add(this.modes.fx);
-      this.modes.attach(model, config, data);
+    this.modes?.attach(model, config, data);
+
+    if (prev) this.retire(prev, how);
+    this.arrive(model, shadow, how);
+    if (how !== 'cut') {
+      this.modes?.reframe(how === 'initial' ? 0.9 : 1.2);
+      this.prefetchAround(config);
     }
+    this.stats.task(`present ${config.id}`, performance.now() - t0);
+
     this.chrome?.setBlocks(data.total);
     this.stats.setExtra(
       `${data.total.toLocaleString('en-US')} voxels · build ${data.buildMs.toFixed(0)} ms · ${model.info.drawCalls} draws`,
     );
-
     if (import.meta.env.DEV) {
       const breakdown = PARTS.map((id, i) => [id, data.partCounts[i]] as const)
         .filter(([, n]) => n > 0)
@@ -625,6 +896,87 @@ export class App {
       );
       console.info(`[lab] parts: ${breakdown}`);
     }
+  }
+
+  /** The incoming airframe: gathers out of its cloud, fades in, or simply appears. */
+  private arrive(model: VoxelModel, shadow: Mesh, how: Transition): void {
+    const shade = shadow.material as MeshBasicMaterial;
+    if (how === 'cut') return;
+    if (how === 'fade' || (how === 'initial' && this.reduced)) {
+      const fade = { v: 0 };
+      model.setFade(0);
+      shade.opacity = 0;
+      gsap.to(fade, { v: 1, duration: 0.5, delay: 0.15, ease: 'power2.out', onUpdate: () => model.setFade(fade.v) });
+      gsap.to(shade, { opacity: 1, duration: 0.5, delay: 0.15 });
+      return;
+    }
+    // On the introduction the cloud only half gathers: the scroll finishes it.
+    const cover = how === 'initial' && this.chapter <= 0 && model.info.id === firstOf(0).id;
+    const to = cover ? COVER_SCATTER * Math.max(0, 1 - this.coverProgress) : 0;
+    model.setMorph(1.3);
+    shade.opacity = 0;
+    gsap.to(model.uniforms.uMorph, {
+      value: to,
+      duration: how === 'initial' ? 1.6 : 1.15,
+      delay: how === 'initial' ? 0.1 : 0.28,
+      ease: 'power3.out',
+      onComplete: () => this.applyCover(),
+    });
+    gsap.to(shade, { opacity: 1, duration: 0.8, delay: 0.45 });
+  }
+
+  /**
+   * The outgoing airframe scatters from wherever it is -- even half gathered,
+   * if the visitor moved on mid-morph -- and is dropped once it is gone.
+   */
+  private retire(prev: Leaving, how: Transition): void {
+    const { model, shadow } = prev;
+    if (how === 'cut') {
+      this.drop(prev);
+      return;
+    }
+    // Whatever mode left it in -- hidden under a cockpit section, exploded,
+    // doors open -- it leaves as the plain airframe; the scatter hides the snap.
+    model.partState.reset();
+    model.setExplode(1);
+    model.group.visible = true;
+    gsap.killTweensOf(model.uniforms.uMorph);
+    this.leaving.push(prev);
+    // Two on the way out is plenty; a third means the visitor is racing.
+    while (this.leaving.length > 2) this.drop(this.leaving[0]);
+
+    gsap.to(shadow.material as MeshBasicMaterial, { opacity: 0, duration: 0.45 });
+    if (how === 'fade' || this.reduced) {
+      const fade = { v: model.uniforms.uFade.value };
+      gsap.to(fade, {
+        v: 0,
+        duration: 0.4,
+        ease: 'power2.in',
+        onUpdate: () => model.setFade(fade.v),
+        onComplete: () => this.drop(prev),
+      });
+      return;
+    }
+    const from = Math.min(1.3, model.morph);
+    gsap.to(model.uniforms.uMorph, {
+      value: 1.3,
+      duration: 0.25 + 0.6 * (1 - from / 1.3),
+      ease: 'power2.in',
+      onComplete: () => this.drop(prev),
+    });
+  }
+
+  private drop(item: Leaving): void {
+    const i = this.leaving.indexOf(item);
+    if (i >= 0) this.leaving.splice(i, 1);
+    gsap.killTweensOf(item.model.uniforms.uMorph);
+    gsap.killTweensOf(item.shadow.material);
+    item.model.group.removeFromParent();
+    item.shadow.removeFromParent();
+    item.model.dispose();
+    // The shadow's map is shared; only its own material and geometry go.
+    (item.shadow.material as MeshBasicMaterial).dispose();
+    item.shadow.geometry.dispose();
   }
 
   start(): void {
@@ -695,6 +1047,9 @@ export class App {
     window.removeEventListener('resize', this.resize);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('popstate', this.onPopState);
+    this.chapters?.dispose();
+    for (const l of [...this.leaving]) this.drop(l);
     this.model?.dispose();
     this.bench?.dispose();
     this.gallery?.dispose();
