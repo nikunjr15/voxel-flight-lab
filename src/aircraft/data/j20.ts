@@ -120,7 +120,7 @@ export const J20: AircraftConfig = {
       sweep: 38,
       cant: 26,
       separation: 1.4,
-      thickness: 0.28,
+      thickness: 0.2,
       atZ: 16.0,
       atY: 0.22,
     },

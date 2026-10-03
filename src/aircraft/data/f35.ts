@@ -116,7 +116,7 @@ export const F35: AircraftConfig = {
       sweep: 26,
       cant: 25,
       separation: 1.1,
-      thickness: 0.28,
+      thickness: 0.2,
       atZ: 10.3,
       atY: 0.3,
     },
@@ -174,6 +174,9 @@ export const F35: AircraftConfig = {
       },
     ],
     markings: {
+      // Grey tone-on-tone, as on the real aircraft: a full-colour insignia is a
+      // visual cue the shaping works to avoid giving away.
+      lowVis: true,
       radius: 0.68,
       wing: { x: 2.7, chord: 0.42 },
       fuselageZ: 11.0,

@@ -29,7 +29,11 @@ export function buildEngine(ctx: BuildCtx, p: NozzleParams): void {
         const r = radius * (0.82 + 0.18 * Math.sin(Math.PI * t));
         return { cx, cy: ctx.gy(p.atY ?? 0), w: r, h: r, e: 2 };
       },
-      { pal: metal, part: ctx.p('engine') },
+      // Interior only. Written with 'set', the core filled its whole cylinder
+      // even where the airframe around it is shallower -- the Flanker family's
+      // nacelle-to-wing junction -- and its metal top faces surfaced as thin
+      // white strips that caught the key light at rear three-quarter.
+      { pal: metal, part: ctx.p('engine'), mode: 'interior' },
     );
   }
 }

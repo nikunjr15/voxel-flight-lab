@@ -164,6 +164,9 @@ export class App {
     const gallery = new Gallery(document.body);
     this.gallery = gallery;
     this.pivot.add(gallery.group);
+    // Dev handle for isolating parts from the console while chasing a render
+    // artefact: `__gallery.placed[0].model.setOpacity('fuselage', 0)`.
+    if (import.meta.env.DEV) (window as unknown as { __gallery: Gallery }).__gallery = gallery;
     this.idle = false;
     this.pivot.rotation.set(0, 0, 0);
     this.rig.setParallax(false);

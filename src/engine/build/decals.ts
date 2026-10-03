@@ -62,7 +62,16 @@ export function paintSide(
   mask: Mask,
   part: number,
   allow: PartFilter,
+  /**
+   * surface: snap to the widest row and unwrap the section in arc length, for
+   * insignia that must stay circular on a curved flank.
+   * flat: project straight in from the side at the given height, for text --
+   * a serial is read side-on, and unwrapping it across a chine edge spends
+   * extra length on the step and drops the top row of every glyph.
+   */
+  projection: 'surface' | 'flat' = 'surface',
 ): void {
+  const flat = projection === 'flat';
   const z0 = Math.max(0, Math.floor(cz - reach));
   const z1 = Math.min(grid.sz - 1, Math.ceil(cz + reach));
   const from = side > 0 ? grid.sx - 1 : 0;
@@ -83,7 +92,7 @@ export function paintSide(
   // shoulder, the walk climbs onto the upper deck, and half the roundel ends
   // up visible from directly above. The widest row is the flank by definition.
   const zMid = Math.min(grid.sz - 1, Math.max(0, Math.round(cz)));
-  const search = Math.round(reach * 0.6);
+  const search = flat ? 0 : Math.round(reach * 0.6);
   let yc = Math.round(cy);
   let widest = -1;
   for (let y = Math.round(cy) - search; y <= Math.round(cy) + search; y++) {
@@ -107,7 +116,7 @@ export function paintSide(
         const y = yc + dir * k;
         const x = outermost(y, z);
         if (x < 0) break;
-        if (k > 0) s += Math.hypot(1, x - xPrev);
+        if (k > 0) s += flat ? 1 : Math.hypot(1, x - xPrev);
         xPrev = x;
         if (s > reach) break;
         const pal = mask(u, dir * s);

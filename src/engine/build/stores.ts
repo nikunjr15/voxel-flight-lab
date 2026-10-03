@@ -110,23 +110,28 @@ function buildBay(ctx: BuildCtx, bay: BayParams): void {
   const lining = ctx.pal.shade('skinDark', 0.55);
   const doorPal = ctx.pal.idx('skin');
 
-  // Cavity, then a one-voxel lining so the bay reads as a box, not a hole.
+  // Cavity, then a one-voxel lining on the roof and walls so the bay reads as
+  // a box, not a hole, when the doors open. The lining only recolours
+  // structure that is already there. It used to be a plate filled into air
+  // just below the floor -- the opening side -- so wherever the keel was
+  // narrower than the bay it hung outside the skin as a dark slab, with the
+  // doors shut.
   fillBox(grid, [ctx.gx(0) - hw, floor, zA], [ctx.gx(0) + hw, top, zB], {
     pal: 0,
     part: 0,
     mode: 'erase',
   });
-  fillBox(grid, [ctx.gx(0) - hw - 1, floor - 1, zA - 1], [ctx.gx(0) + hw + 1, floor, zB + 1], {
+  fillBox(grid, [ctx.gx(0) - hw - 1, top, zA - 1], [ctx.gx(0) + hw + 1, top + 1, zB + 1], {
     pal: lining,
     part: ctx.p('bay'),
-    mode: 'fill-empty',
+    mode: 'paint',
   });
   for (const sx of [-1, 1]) {
     const x = ctx.gx(0) + sx * (hw + 0.5);
     fillBox(grid, [x - 0.5, floor, zA], [x + 0.5, top, zB], {
       pal: lining,
       part: ctx.p('bay'),
-      mode: 'fill-empty',
+      mode: 'paint',
     });
   }
 

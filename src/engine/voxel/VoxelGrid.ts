@@ -95,7 +95,17 @@ export class VoxelGrid {
   }
 }
 
-export type FillMode = 'set' | 'fill-empty' | 'paint' | 'erase';
+/**
+ * - set: write unconditionally.
+ * - fill-empty: write only into air.
+ * - paint: recolour only cells that are already solid.
+ * - interior: recolour only solid cells enclosed across the section, i.e. with
+ *   all four x and y neighbours solid. For internal parts that run fore and aft
+ *   -- an engine core -- so they can never surface through a skin thinner than
+ *   their own radius, while the end facing an intake duct (open in z) keeps
+ *   its own colour.
+ */
+export type FillMode = 'set' | 'fill-empty' | 'paint' | 'erase' | 'interior';
 
 export function applyFill(
   grid: VoxelGrid,
@@ -118,6 +128,17 @@ export function applyFill(
       break;
     case 'erase':
       grid.erase(x, y, z);
+      break;
+    case 'interior':
+      if (
+        grid.has(x, y, z) &&
+        grid.has(x + 1, y, z) &&
+        grid.has(x - 1, y, z) &&
+        grid.has(x, y + 1, z) &&
+        grid.has(x, y - 1, z)
+      ) {
+        grid.paint(x, y, z, pal, part);
+      }
       break;
   }
 }

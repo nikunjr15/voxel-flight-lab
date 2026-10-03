@@ -115,7 +115,7 @@ export const AMCA: AircraftConfig = {
       sweep: 28,
       cant: 27,
       separation: 1.25,
-      thickness: 0.28,
+      thickness: 0.2,
       atZ: 11.3,
       atY: 0.3,
     },

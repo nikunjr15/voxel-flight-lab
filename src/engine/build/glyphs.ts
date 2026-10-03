@@ -117,7 +117,9 @@ export function buildLettering(ctx: BuildCtx, items: LetteringParams[]): void {
         pal,
         flip: side < 0,
       });
-      paintSide(ctx.grid, side, cy, cz, Math.max(width, height), mask, part, allow);
+      // Flat projection: a serial sits where the config says and is read
+      // side-on, so it is not snapped or unwrapped like an insignia.
+      paintSide(ctx.grid, side, cy, cz, Math.max(width, height), mask, part, allow, 'flat');
     }
   }
 }

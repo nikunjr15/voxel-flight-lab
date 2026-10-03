@@ -27,6 +27,26 @@ function pointInPolygon(pts: Array<[number, number]>, x: number, y: number): boo
   return inside;
 }
 
+/** Voxels of radius each roundel ring needs to survive rasterising. */
+const RING_VOXELS = 1.8;
+/** How far a placement may be enlarged to keep every band before it is skipped. */
+const MAX_ENLARGE = 1.6;
+
+/**
+ * The radius a marking is actually painted at, or 0 to skip the placement.
+ *
+ * Most roundels may shed interior bands when they get small. Some may not --
+ * an Indian roundel without its white ring is not an Indian roundel -- so for
+ * those the placement is enlarged until every band fits, within reason, and
+ * skipped when even that would not be enough.
+ */
+function placementRadius(marking: CountryMarking, radius: number): number {
+  if (marking.style !== 'roundel' || !marking.allBands) return radius;
+  const needed = marking.colors.length * RING_VOXELS;
+  if (radius >= needed) return radius;
+  return radius * MAX_ENLARGE >= needed ? needed : 0;
+}
+
 /**
  * Builds a 2D mask returning a palette index, or 0 for "leave the skin alone".
  * `u` runs along the chord, `v` across it, both in voxel units from the centre.
@@ -50,7 +70,9 @@ function maskFor(
       // roundel came out as a green cross on an orange blob. Drop interior
       // colours rather than the marking, always keeping the outermost and
       // innermost so the nation still reads.
-      const fits = Math.max(1, Math.min(pal.length, Math.floor(radius / 1.8)));
+      // The epsilon keeps a radius that placementRadius set to exactly
+      // bands * RING_VOXELS from flooring one band short.
+      const fits = Math.max(1, Math.min(pal.length, Math.floor(radius / RING_VOXELS + 1e-9)));
       const ringPal =
         fits === pal.length
           ? pal
@@ -231,19 +253,32 @@ export function buildMarkings(
 ): void {
   const style = p.style ?? marking.style;
   if (style === 'none') return;
-  const radius = ctx.v(p.radius);
   const part = ctx.p('marking');
+  // Low-visibility schemes swap the national colours for tones of grey, on
+  // the aircraft whose air force actually paints them that way.
+  const colors = p.lowVis && marking.lowVis ? marking.lowVis : marking.colors;
+  const resolved: CountryMarking = { ...marking, style, colors };
+  const radius = ctx.v(p.radius);
 
   if (p.wing) {
-    const mask = maskFor(ctx, { ...marking, style }, radius);
-    const zAft =
-      p.wing.chord !== undefined && wing
-        ? wingChordZ(wing, p.wing.x, p.wing.chord)
-        : (p.wing.z ?? 0);
-    for (const side of [1, -1] as const) {
-      paintTop(ctx.grid, ctx.gx(p.wing.x * side), ctx.gzAft(zAft), radius * 2.3, mask, part, (q) =>
-        WING_PARTS.has(q),
-      );
+    const r = placementRadius(resolved, radius);
+    if (r > 0) {
+      const mask = maskFor(ctx, resolved, r);
+      // paintTop hands the mask (chordwise, spanwise). Every mask is drawn
+      // with its bars along u and the star's top point toward -v, which is
+      // the fuselage-side convention; on a wing the bars must run spanwise
+      // and the point must face the nose, so the axes are swapped here.
+      // Unswapped, the US bar ran fore and aft across the wing.
+      const onWing: Mask = (u, v) => mask(v, -u);
+      const zAft =
+        p.wing.chord !== undefined && wing
+          ? wingChordZ(wing, p.wing.x, p.wing.chord)
+          : (p.wing.z ?? 0);
+      for (const side of [1, -1] as const) {
+        paintTop(ctx.grid, ctx.gx(p.wing.x * side), ctx.gzAft(zAft), r * 2.3, onWing, part, (q) =>
+          WING_PARTS.has(q),
+        );
+      }
     }
   }
 
@@ -253,12 +288,16 @@ export function buildMarkings(
     // down the x axis smeared as it wrapped round the flank; paintSide now
     // walks the section in arc length, so the size can go back to something
     // closer to scale and the extra voxels keep the bands apart.
-    const bodyRadius = radius * 0.8;
-    const bodyMask = maskFor(ctx, { ...marking, style }, bodyRadius);
-    const cz = ctx.gzAft(p.fuselageZ);
-    const cy = ctx.gy(0.1);
-    for (const side of [1, -1] as const) {
-      paintSide(ctx.grid, side, cy, cz, bodyRadius * 2.3, bodyMask, part, (q) => BODY_PARTS.has(q));
+    const r = placementRadius(resolved, radius * 0.8);
+    if (r > 0) {
+      const mask = maskFor(ctx, resolved, r);
+      // paintSide measures v upward; the mask's star points toward -v.
+      const onSide: Mask = (u, v) => mask(u, -v);
+      const cz = ctx.gzAft(p.fuselageZ);
+      const cy = ctx.gy(0.1);
+      for (const side of [1, -1] as const) {
+        paintSide(ctx.grid, side, cy, cz, r * 2.3, onSide, part, (q) => BODY_PARTS.has(q));
+      }
     }
   }
 

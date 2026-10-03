@@ -1,0 +1,21 @@
+Face-connected (6c) and edge/corner-connected (26c) components per thin-surface part, density 1.
+A ladder is one 26-component split into many 6-components. [sizes] in voxels.
+
+BEFORE (no tunnel-free floor)
+f-22       tail-h-l 303v 6c=1 26c=1 | tail-h-r 303v 6c=1 26c=1 | tail-v-l 274v 6c=7[105/44/40/37/23/18/7] 26c=1 | tail-v-r 274v 6c=7[105/44/40/37/23/18/7] 26c=1
+su-57      tail-h-l 233v 6c=1 26c=1 | tail-h-r 233v 6c=1 26c=1 | ventral-l 44v 6c=3[20/19/5] 26c=1 | ventral-r 44v 6c=3[20/19/5] 26c=1 | tail-v-l 152v 6c=4[104/19/16/13] 26c=1 | tail-v-r 152v 6c=4[104/19/16/13] 26c=1
+su-27      tail-h-l 197v 6c=2[196/1] 26c=1 | tail-h-r 197v 6c=2[196/1] 26c=1 | tail-v-l 284v 6c=2[227/57] 26c=1 | tail-v-r 284v 6c=2[227/57] 26c=1 | ventral-l 29v 6c=1 26c=1 | ventral-r 29v 6c=1 26c=1
+mig-29     tail-h-l 201v 6c=1 26c=1 | tail-h-r 201v 6c=1 26c=1 | tail-v-l 326v 6c=3[142/114/70] 26c=1 | tail-v-r 326v 6c=3[142/114/70] 26c=1
+f-35       tail-h-l 227v 6c=1 26c=1 | tail-h-r 227v 6c=1 26c=1 | tail-v-l 275v 6c=5[187/27/24/20/17] 26c=1 | tail-v-r 275v 6c=5[187/27/24/20/17] 26c=1
+
+AFTER
+f-22       tail-h-l 303v 6c=1 26c=1 | tail-h-r 303v 6c=1 26c=1 | tail-v-l 388v 6c=1 26c=1 | tail-v-r 388v 6c=1 26c=1
+su-57      tail-h-l 233v 6c=1 26c=1 | tail-h-r 233v 6c=1 26c=1 | ventral-l 58v 6c=1 26c=1 | ventral-r 58v 6c=1 26c=1 | tail-v-l 185v 6c=1 26c=1 | tail-v-r 185v 6c=1 26c=1
+su-27      tail-h-l 197v 6c=2[196/1] 26c=1 | tail-h-r 197v 6c=2[196/1] 26c=1 | tail-v-l 298v 6c=1 26c=1 | tail-v-r 298v 6c=1 26c=1 | ventral-l 29v 6c=1 26c=1 | ventral-r 29v 6c=1 26c=1
+mig-29     tail-h-l 201v 6c=1 26c=1 | tail-h-r 201v 6c=1 26c=1 | tail-v-l 361v 6c=1 26c=1 | tail-v-r 361v 6c=1 26c=1
+f-35       tail-h-l 227v 6c=1 26c=1 | tail-h-r 227v 6c=1 26c=1 | tail-v-l 351v 6c=1 26c=1 | tail-v-r 351v 6c=1 26c=1
+j-20       ventral-l 70v 6c=1 26c=1 | ventral-r 70v 6c=1 26c=1 | tail-v-l 182v 6c=1 26c=1 | tail-v-r 182v 6c=1 26c=1 | canard-l 142v 6c=1 26c=1 | canard-r 142v 6c=1 26c=1
+amca       tail-h-l 166v 6c=1 26c=1 | tail-h-r 166v 6c=1 26c=1 | tail-v-l 191v 6c=1 26c=1 | tail-v-r 191v 6c=1 26c=1
+gcap       tail-v-l 234v 6c=1 26c=1 | tail-v-r 234v 6c=1 26c=1
+vajra      tail-v-l 155v 6c=1 26c=1 | tail-v-r 155v 6c=1 26c=1
+su-30mki   tail-h-l 198v 6c=2[197/1] 26c=1 | tail-h-r 198v 6c=2[197/1] 26c=1 | ventral-l 29v 6c=1 26c=1 | ventral-r 29v 6c=1 26c=1 | tail-v-l 203v 6c=1 26c=1 | tail-v-r 203v 6c=1 26c=1 | canard-l 99v 6c=1 26c=1 | canard-r 99v 6c=1 26c=1

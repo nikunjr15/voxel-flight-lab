@@ -12,6 +12,16 @@ export interface CountryMarking {
    * wartime fin marking is one this project will not draw.
    */
   finFlash?: string[];
+  /**
+   * Never shed an interior band. Placements too small to carry every ring are
+   * enlarged or skipped instead of simplified.
+   */
+  allBands?: boolean;
+  /**
+   * Tone-on-tone greys for low-visibility schemes, same order as colors. Used
+   * only where a config asks for it with MarkingParams.lowVis.
+   */
+  lowVis?: string[];
 }
 
 export interface Country {
@@ -35,7 +45,13 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     code: 'US',
     name: 'United States',
     bar: ['#2a3b78', '#f2f2f2', '#b22234'],
-    marking: { style: 'star-bar', colors: ['#2a3b78', '#f2f2f2', '#b22234'] },
+    marking: {
+      style: 'star-bar',
+      colors: ['#2a3b78', '#f2f2f2', '#b22234'],
+      // Disc and bar outline a shade darker than the airframe, star a shade
+      // lighter: present at arm's length, gone at a distance.
+      lowVis: ['#4a5056', '#868c92', '#4a5056'],
+    },
     accent: '#2a3b78',
   },
   SU: {
@@ -81,6 +97,7 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     marking: {
       style: 'roundel',
       colors: ['#ff9933', '#f2f2f2', '#138808'],
+      allBands: true,
       finFlash: ['#ff9933', '#f2f2f2', '#138808'],
     },
     accent: '#ff9933',

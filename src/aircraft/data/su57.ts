@@ -142,7 +142,7 @@ export const SU57: AircraftConfig = {
       sweep: 36,
       cant: 26,
       separation: 1.9,
-      thickness: 0.28,
+      thickness: 0.2,
       atZ: 13.0,
       atY: 0.2,
     },

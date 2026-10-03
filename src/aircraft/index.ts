@@ -103,3 +103,4 @@ export const byChapter = (chapter: number): AircraftConfig[] =>
 
 export * from './types';
 export * from './countries';
+export * from './chapters';

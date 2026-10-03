@@ -147,6 +147,9 @@ export const NGAD: AircraftConfig = {
       },
     ],
     markings: {
+      // Grey tone-on-tone, as on the real aircraft: a full-colour insignia is a
+      // visual cue the shaping works to avoid giving away.
+      lowVis: true,
       radius: 0.95,
       wing: { x: 4.2, chord: 0.5 },
       fuselageZ: 15.0,

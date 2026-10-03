@@ -128,7 +128,7 @@ export const F22: AircraftConfig = {
       // back at anything looking from the side.
       cant: 28,
       separation: 1.45,
-      thickness: 0.3,
+      thickness: 0.22,
       atZ: 12.2,
       atY: 0.34,
     },
@@ -206,6 +206,9 @@ export const F22: AircraftConfig = {
       },
     ],
     markings: {
+      // Grey tone-on-tone, as on the real aircraft: a full-colour insignia is a
+      // visual cue the shaping works to avoid giving away.
+      lowVis: true,
       radius: 0.78,
       wing: { x: 3.4, chord: 0.42 },
       fuselageZ: 13.6,

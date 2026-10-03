@@ -4,7 +4,12 @@ import type { AircraftConfig } from '../types';
  * GCAP. The Global Combat Air Programme: Britain, Italy and Japan building one
  * sixth-generation aircraft between them. Nothing has flown and no dimensions
  * have been released, so the model is a stylised reading of the published
- * concept models -- a large tailless delta -- drawn to an assumed size.
+ * concept model shown at Farnborough in 2024 -- a large true delta with twin
+ * canted fins -- drawn to an assumed size.
+ *
+ * Of the three sixth-generation shapes it is the plain one in plan: four
+ * straight edges and two fins at the root. NGAD has no fins; VAJRA has a
+ * cranked leading edge, a notched trailing edge and fins out on its nacelles.
  *
  * No national insignia: the programme has three partners and no aircraft, so
  * there is nothing to paint that would be true.
@@ -24,16 +29,16 @@ export const GCAP: AircraftConfig = {
     status: 'concept',
   },
   copy: {
-    category: 'TAILLESS SIXTH-GENERATION CONCEPT',
+    category: 'SIXTH-GENERATION CONCEPT',
     subtitle: [
-      'Three countries, one airframe, and no fins at all:',
-      'control handed from surfaces to software.',
+      'Three countries, one airframe, and a wing grown',
+      'into a true delta for range rather than for the turn.',
     ],
     annotations: [
       {
         n: '01',
-        title: 'No vertical tail',
-        body: 'A fin is the single largest reflector on a conventional fighter and the first thing a sixth-generation layout gives up. Yaw control moves to split surfaces in the wing and to the engines, and the flight-control computer does work no pilot could.',
+        title: 'A true delta, and fins kept',
+        body: 'The 2024 concept model replaced the earlier cranked planform with a larger, plain delta, and kept two vertical tails canted well outboard. The fins stay because they are still the simplest way to give a big aircraft directional stability; the cant is what keeps them from facing a radar side-on.',
       },
       {
         n: '02',
@@ -86,8 +91,7 @@ export const GCAP: AircraftConfig = {
       ],
     },
     wing: {
-      // Cranked delta with a straight trailing edge: no fins, no tailplane,
-      // so every control surface the aircraft has is on this one planform.
+      // True delta, as on the 2024 model: no break anywhere on the edge.
       kind: 'delta',
       span: 15.0,
       rootOffset: 1.5,
@@ -99,6 +103,18 @@ export const GCAP: AircraftConfig = {
       atZ: 6.6,
       atY: -0.12,
       tipThicknessRatio: 0.36,
+    },
+    tailVTwin: {
+      // Small and canted hard, set close in at the wing root.
+      span: 2.2,
+      rootChord: 3.2,
+      tipChord: 1.0,
+      sweep: 48,
+      cant: 34,
+      separation: 1.1,
+      thickness: 0.22,
+      atZ: 16.4,
+      atY: 0.28,
     },
     intakes: [
       {

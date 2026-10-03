@@ -270,6 +270,19 @@ export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: F
   }
   const halfT = Math.max(p.thickness, 1.2) * 0.5 + 1;
 
+  // Tunnel-free floor. A digital plane |n.p| <= t/2 is 6-connected -- every
+  // pair of neighbouring cells along the surface shares a face -- only when t
+  // is at least the L1 norm of its unit normal. For a surface lying flat on a
+  // grid axis that norm is 1, a one-voxel slab already meets it, and nothing
+  // changes. Tilt the normal -- a fin canted 28 degrees, a canard with
+  // anhedral -- and a one-voxel slab falls below it: consecutive rows meet
+  // only along an edge, and the surface renders as a ladder of disconnected
+  // steps. Lifting the half-extent to the floor adds the fewest voxels that
+  // close every gap, and only where the surface is actually tilted.
+  const n = frame.ey;
+  const l1 = Math.abs(n[0]) + Math.abs(n[1]) + Math.abs(n[2]);
+  const floorHalf = l1 > 1.001 ? l1 * 0.5 + 1e-4 : 0;
+
   const inside: InsideFn = (lx, ly, lz) => {
     const s = from + lx;
     if (s < inset || s > to) return false;
@@ -305,7 +318,7 @@ export function fillPlanform(grid: VoxelGrid, frame: Frame, p: Planform, opts: F
     // thick the half-extent is exactly 0.5, so a tolerance lets columns whose
     // offset happens to land on the boundary take a second layer, and the
     // trailing edge comes out ragged.
-    return Math.abs(ly) < Math.max(1, Math.round(th)) * 0.5;
+    return Math.abs(ly) < Math.max(Math.max(1, Math.round(th)) * 0.5, floorHalf);
   };
 
   fillFrame(grid, frame, [0, -halfT, zMin - 1], [localSpan, halfT, zMax + 1], inside, opts);
