@@ -3,3 +3,8 @@ dist
 .DS_Store
 *.local
 .vercel
+
+# Review captures stay local; each phase's README is committed.
+review/**/*.gif
+review/**/*.jpg
+review/**/*.png

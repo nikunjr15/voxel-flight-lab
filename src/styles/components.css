@@ -299,6 +299,32 @@
   }
 }
 
+/* Cockpit mode on a phone: the cutaway fills the screen, so the notes fold
+   to their numbers on a frosted pill, and an opened card gets the same
+   ground so it reads over the airframe. */
+@media (max-width: 759px) {
+  .notes.is-foldable:not(.is-open) .notes__cards {
+    display: none;
+  }
+
+  .notes.is-foldable .notes__index {
+    width: fit-content;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .notes.is-foldable.is-open .notes__cards {
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
 /* ---------- inspect: gizmo and label ---------- */
 
 .inspect {

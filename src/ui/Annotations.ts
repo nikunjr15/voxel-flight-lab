@@ -6,12 +6,18 @@ import type { Store, ViewerState } from '../app/store';
  * on a narrow or short screen one card shows at a time with an index of numbers
  * above it. The switch is pure CSS -- this class only keeps track of which card
  * is the active one -- so a resize never re-renders anything.
+ *
+ * In cockpit mode the view runs the full height of a phone screen, so there the
+ * notes fold down to the row of numbers, and a number opens its card. The fold
+ * is CSS too: this class only marks the notes as foldable, and open or shut.
  */
 export class Annotations {
   readonly el: HTMLElement;
   private readonly index: HTMLElement;
   private readonly cards: HTMLElement;
   private count = 0;
+  private foldable = false;
+  private open = false;
 
   constructor(
     mount: HTMLElement,
@@ -32,6 +38,8 @@ export class Annotations {
 
     this.el.append(this.index, this.cards);
     store.on('note', (i) => this.sync(i));
+    store.on('mode', (m) => this.setFoldable(m === 'cockpit'));
+    this.setFoldable(store.get('mode') === 'cockpit');
   }
 
   show(notes: Annotation[]): void {
@@ -59,7 +67,11 @@ export class Annotations {
       b.textContent = a.n;
       b.setAttribute('aria-controls', id);
       b.setAttribute('aria-label', `Note ${a.n}: ${a.title}`);
-      b.addEventListener('click', () => this.store.set('note', i));
+      b.addEventListener('click', () => {
+        // Folded, a number opens its card, and the open card's number shuts it.
+        if (this.foldable) this.setOpen(!(this.open && this.store.get('note') === i));
+        this.store.set('note', i);
+      });
       this.index.appendChild(b);
     });
 
@@ -74,11 +86,27 @@ export class Annotations {
     this.store.set('note', (this.store.get('note') + delta + this.count) % this.count);
   }
 
+  private setFoldable(on: boolean): void {
+    this.foldable = on;
+    this.el.classList.toggle('is-foldable', on);
+    this.setOpen(false);
+  }
+
+  private setOpen(on: boolean): void {
+    this.open = on;
+    this.el.classList.toggle('is-open', on);
+    for (const b of this.index.children) {
+      if (this.foldable) b.setAttribute('aria-expanded', String(on && b.getAttribute('aria-current') === 'true'));
+      else b.removeAttribute('aria-expanded');
+    }
+  }
+
   private sync(active: number): void {
     [...this.cards.children].forEach((c, i) => c.classList.toggle('is-active', i === active));
     [...this.index.children].forEach((b, i) => {
       if (i === active) b.setAttribute('aria-current', 'true');
       else b.removeAttribute('aria-current');
     });
+    this.setOpen(this.open);
   }
 }
