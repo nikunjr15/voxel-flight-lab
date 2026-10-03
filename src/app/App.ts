@@ -14,14 +14,11 @@ import type { AircraftConfig } from '../aircraft/types';
 import { COUNTRIES } from '../aircraft/countries';
 import { DevStats } from '../ui/devstats';
 
-/** `?rig=1` swaps the exhibit for the primitive test bench. Dev only. */
-const RIG_MODE =
-  import.meta.env.DEV && new URLSearchParams(location.search).get('rig') === '1';
+/** `?rig=1` swaps the exhibit for the primitive test bench. Review builds only. */
+const RIG_MODE = __REVIEW__ && new URLSearchParams(location.search).get('rig') === '1';
 
-/** `?gallery=2b` lays a batch out at true relative scale. Dev only. */
-const GALLERY_SET = import.meta.env.DEV
-  ? new URLSearchParams(location.search).get('gallery')
-  : null;
+/** `?gallery=2b` lays a batch out at true relative scale. Review builds only. */
+const GALLERY_SET = __REVIEW__ ? new URLSearchParams(location.search).get('gallery') : null;
 
 type ViewName =
   | 'hero'
@@ -174,9 +171,12 @@ export class App {
     document.querySelector('.chrome')?.setAttribute('hidden', '');
 
     const view = (params.get('view') ?? 'plan') as ViewName;
+    const density = Number(params.get('density')) || densityForViewport();
     await gallery.load(
       ids,
-      Number(params.get('density')) || 1,
+      // The viewport's own density unless overridden, so a gallery opened on a
+      // phone shows what the phone will actually build.
+      density,
       params.get('shared') !== '0',
       view === 'plan',
       // Two jets side by side is the compare case, so size to the smaller one.
@@ -188,6 +188,10 @@ export class App {
       view === 'plan' || ids.length <= 4 ? Infinity : Math.ceil(ids.length / 2),
     );
     console.info(`[gallery ${set}]\n${gallery.table()}`);
+    const blocks = gallery.placed.reduce((n, pl) => n + pl.model.info.surfaceVoxels, 0);
+    this.stats.setExtra(
+      `density ${density} · ${blocks.toLocaleString('en-US')} blocks · ${gallery.placed.length} jets`,
+    );
 
     const b = gallery.bounds();
     const size = b.getSize(new Vector3());

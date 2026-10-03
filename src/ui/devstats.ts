@@ -11,6 +11,8 @@ export class DevStats {
     this.el.setAttribute('aria-hidden', 'true');
     this.el.hidden = true;
     parent.appendChild(this.el);
+    // `?stats=1` shows it from the start, for devices with no F key.
+    if (__REVIEW__ && new URLSearchParams(location.search).get('stats') === '1') this.toggle();
   }
 
   toggle(): void {
